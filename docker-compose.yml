@@ -1,0 +1,41 @@
+services:
+  fileapi:
+    build:
+      context: .
+      dockerfile: src/Aelena.FileApi.Api/Dockerfile
+    ports:
+      - "${API_PORT:-9401}:9401"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      # LLM
+      - AppSettings__PublicLlmBaseUrl=${PUBLIC_LLM_BASE_URL:-https://api.openai.com/v1}
+      - AppSettings__PublicLlmApiKey=${PUBLIC_LLM_API_KEY:-}
+      - AppSettings__PublicLlmModel=${PUBLIC_LLM_MODEL:-gpt-4o}
+      - AppSettings__PrivateLlmBaseUrl=${PRIVATE_LLM_BASE_URL:-http://host.docker.internal:3000/api/v1}
+      - AppSettings__PrivateLlmApiKey=${PRIVATE_LLM_API_KEY:-}
+      - AppSettings__PrivateLlmModel=${PRIVATE_LLM_MODEL:-ComparisonModel}
+      # Vision
+      - AppSettings__PublicVisionModel=${PUBLIC_LLM_IMAGE_MODEL:-gpt-4o}
+      - AppSettings__PrivateVisionModel=${PRIVATE_LLM_IMAGE_MODEL:-llama3.2-vision:11b}
+      - AppSettings__PrivateVisionBaseUrl=${PRIVATE_LLM_IMAGE_BASE_URL:-http://host.docker.internal:11434/v1}
+      # Auth & CORS
+      - AppSettings__JwtSecretKey=${JWT_SECRET_KEY:-your-secret-key-change-in-production}
+      - AppSettings__CorsOrigins=${CORS_ORIGINS:-http://localhost:9600}
+      - AppSettings__FrontendBaseUrl=${FRONTEND_BASE_URL:-http://localhost:9600}
+      # Limits
+      - AppSettings__MaxRequestsPerDay=${MAX_REQUESTS_PER_DAY:-0}
+      - AppSettings__MaxFileSizeBytes=${MAX_FILE_SIZE_BYTES:-0}
+      - AppSettings__MaxFilesPerBatch=${MAX_FILES_PER_BATCH:-0}
+      - AppSettings__MaxBatchSizeBytes=${MAX_BATCH_SIZE_BYTES:-0}
+      - AppSettings__MaxInMemoryJobs=${MAX_IN_MEMORY_JOBS:-1000}
+      - AppSettings__MaxInMemoryBatches=${MAX_IN_MEMORY_BATCHES:-500}
+      # OpenTelemetry
+      - OpenTelemetry__Endpoint=${OTEL_ENDPOINT:-}
+    volumes:
+      - fileapi-data:/app/data
+      - fileapi-logs:/app/logs
+    restart: unless-stopped
+
+volumes:
+  fileapi-data:
+  fileapi-logs:
