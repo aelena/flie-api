@@ -18,7 +18,7 @@ A comprehensive .NET 8 / C# 12 document processing platform. Three ports — **H
                              │
               ┌──────────────┼──────────────┐
               │              │              │
-        ┌─────▼─────┐  ┌────▼────┐  ┌─────▼─────┐
+        ┌─────▼──────┐  ┌────▼────┐  ┌──────▼────┐
         │  HTTP API  │  │   CLI   │  │   gRPC    │
         │ (MinAPIs)  │  │ (rich)  │  │ (planned) │
         └────────────┘  └─────────┘  └───────────┘
