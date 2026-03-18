@@ -1,7 +1,6 @@
 using Aelena.FileApi.Api.Configuration;
 using Aelena.FileApi.Api.Endpoints;
 using Aelena.FileApi.Api.Middleware;
-using Aelena.FileApi.Core;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -44,8 +43,14 @@ try
                 m.AddOtlpExporter(o => o.Endpoint = new Uri(otelEndpoint));
         });
 
-    // ── Core services (NuGet library) ────────────────────────────────────
-    builder.Services.AddFileApiCore();
+    // ── Infrastructure services (Api-layer concerns) ───────────────────
+    builder.Services.AddSingleton(new Aelena.FileApi.Core.Services.Llm.LlmConfig());
+    builder.Services.AddSingleton(new Aelena.FileApi.Core.Services.Jobs.InMemoryJobStore<ComparisonReport>(appSettings.MaxInMemoryJobs));
+    builder.Services.AddSingleton(new Aelena.FileApi.Core.Services.Jobs.InMemoryJobStore<SummarizeJobReport>(appSettings.MaxInMemoryJobs));
+    builder.Services.AddSingleton(new Aelena.FileApi.Core.Services.Jobs.InMemoryJobStore<BatchJobResponse>(appSettings.MaxInMemoryBatches));
+    builder.Services.AddSingleton(new Aelena.FileApi.Core.Services.Persistence.ShareRepository("data/shares.db"));
+    builder.Services.AddSingleton(new Aelena.FileApi.Core.Services.Llm.PromptRenderer());
+    builder.Services.AddSingleton<Aelena.FileApi.Api.Services.WebhookService>();
 
     // ── HTTP / CORS ──────────────────────────────────────────────────────
     builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>

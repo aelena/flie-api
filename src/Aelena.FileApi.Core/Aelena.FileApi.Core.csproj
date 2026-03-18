@@ -3,26 +3,29 @@
   <PropertyGroup>
     <RootNamespace>Aelena.FileApi.Core</RootNamespace>
     <PackageId>Aelena.FileApi.Core</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>aelena</Authors>
-    <Description>Document processing and AI analysis library — PDF, DOCX, image, geospatial, and LLM-powered operations.</Description>
-    <PackageTags>document;pdf;docx;image;ocr;geospatial;llm</PackageTags>
+    <Description>Pure document processing library — PDF, DOCX, image, email, hash, PII, readability, and more. Zero ASP.NET dependencies. Use standalone or behind any host (API, CLI, gRPC).</Description>
+    <PackageTags>document;pdf;docx;image;ocr;hash;pii;readability</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/aelena/fileapi</RepositoryUrl>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.*" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.*" />
+    <!-- Auth (JWT) -->
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.*" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.*" />
+
+    <!-- Token counting -->
     <PackageReference Include="SharpToken" Version="2.*" />
+
+    <!-- SQLite persistence -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.*" />
     <PackageReference Include="Dapper" Version="2.*" />
+
+    <!-- Templating -->
     <PackageReference Include="Scriban" Version="5.*" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.*" />
 
     <!-- PDF -->
     <PackageReference Include="itext7" Version="8.*" />

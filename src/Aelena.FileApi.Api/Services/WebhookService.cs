@@ -1,10 +1,11 @@
 using System.Text;
+using System.Text.Json;
 
-namespace Aelena.FileApi.Core.Services.Common;
+namespace Aelena.FileApi.Api.Services;
 
 /// <summary>
 /// Fire-and-forget HTTP POST for webhook callbacks.
-/// Used by async job services to notify external systems of job completion.
+/// Infrastructure concern — lives in the Api layer, not in Core.
 /// </summary>
 public sealed class WebhookService(IHttpClientFactory httpClientFactory, ILogger<WebhookService> log)
 {

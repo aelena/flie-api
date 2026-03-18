@@ -21,23 +21,29 @@ public sealed record LlmConfig
 
 /// <summary>
 /// Creates <see cref="ILlmClient"/> instances routed by confidentiality tier.
-/// <list type="bullet">
-///   <item><c>Public</c> → cloud API (e.g. OpenAI GPT-4o)</item>
-///   <item><c>Private</c> → local model (OpenWebUI / Ollama)</item>
-///   <item><c>AirGapped</c> → returns <c>null</c> (no LLM calls)</item>
-/// </list>
+/// Pure static factory — no DI, no ASP.NET dependencies.
+/// Caller provides the <see cref="HttpClient"/> instance.
 /// </summary>
-public sealed class LlmClientFactory(LlmConfig config, IHttpClientFactory httpClientFactory) : ILlmClientFactory
+public static class LlmClientFactory
 {
-    public ILlmClient? GetClient(Confidentiality confidentiality, bool vision = false) =>
+    /// <summary>
+    /// Create an LLM client for the given confidentiality level.
+    /// Returns <c>null</c> for <see cref="Confidentiality.AirGapped"/>.
+    /// </summary>
+    /// <param name="config">LLM endpoint configuration.</param>
+    /// <param name="http">HttpClient to use for requests.</param>
+    /// <param name="confidentiality">Routing tier.</param>
+    /// <param name="vision">If true, returns a vision-capable client.</param>
+    public static ILlmClient? Create(
+        LlmConfig config, HttpClient http,
+        Confidentiality confidentiality, bool vision = false) =>
         confidentiality switch
         {
             Confidentiality.AirGapped => null,
-            Confidentiality.Public => CreateClient(vision ? config.PublicVision : config.Public),
-            Confidentiality.Private => CreateClient(vision ? config.PrivateVision : config.Private),
+            Confidentiality.Public => new OpenAiCompatibleClient(
+                vision ? config.PublicVision : config.Public, http),
+            Confidentiality.Private => new OpenAiCompatibleClient(
+                vision ? config.PrivateVision : config.Private, http),
             _ => null
         };
-
-    private OpenAiCompatibleClient CreateClient(LlmEndpointConfig endpoint) =>
-        new(endpoint, httpClientFactory.CreateClient("llm"));
 }

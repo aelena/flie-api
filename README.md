@@ -1,26 +1,37 @@
 # FileApi — Document Processing & AI Analysis Platform
 
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
-[![Tests](https://img.shields.io/badge/tests-175%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-222%2B%20passing-brightgreen)]()
 [![.NET](https://img.shields.io/badge/.NET-8.0-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
-A comprehensive .NET 8 / C# 12 API for document analysis, comparison, transformation, and AI-powered insights. Designed as both a **standalone NuGet library** (`Aelena.FileApi.Core`) and an **HTTP API** (`Aelena.FileApi.Api`) using ASP.NET Core Minimal APIs.
+A comprehensive .NET 8 / C# 12 document processing platform. Three ports — **HTTP API**, **Rich CLI**, and **NuGet library** — all powered by the same pure Core library with zero ASP.NET dependencies.
 
 ## Architecture
 
 ```
-Aelena.FileApi.Core        →  NuGet package (usable standalone in any .NET project)
-Aelena.FileApi.Api         →  Thin HTTP wrapper (ASP.NET Core Minimal APIs)
-Aelena.FileApi.Grpc        →  gRPC services for high-performance scenarios (planned)
+                    ┌─────────────────┐
+                    │  Core Library   │  ← NuGet: Aelena.FileApi.Core
+                    │  (static ops,   │     Zero ASP.NET dependencies
+                    │   thread-safe)  │     All business logic here
+                    └────────┬────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+        ┌─────▼─────┐  ┌────▼────┐  ┌─────▼─────┐
+        │  HTTP API  │  │   CLI   │  │   gRPC    │
+        │ (MinAPIs)  │  │ (rich)  │  │ (planned) │
+        └────────────┘  └─────────┘  └───────────┘
 ```
 
 ### Design Principles
 
-- **Terse & functional** — C# 12 records, pattern matching, expression-bodied lambdas, static services
-- **Dual delivery** — All business logic in the Core NuGet package; the API is just the HTTP wrapper
-- **Observability** — OpenTelemetry traces + metrics + logs, Serilog structured logging
-- **Cloud-ready** — Docker multi-stage build, deployable to Azure Container Apps, App Service, AKS, or serverless
+- **Pure library** — Core has zero `Microsoft.Extensions.*` dependencies; usable in console apps, desktop apps, cloud functions, anywhere
+- **Ports & adapters** — API and CLI are thin wrappers calling static Core services
+- **Thread-safe** — All Core operations are static and proven safe under concurrent load
+- **Terse & functional** — C# 12 records, pattern matching, expression-bodied lambdas
+- **Observability** — OpenTelemetry traces + metrics + logs (API layer), Serilog structured logging
+- **Cloud-ready** — Docker multi-stage build, deployable to Azure Container Apps, App Service, AKS
 
 ## Features
 
@@ -129,13 +140,67 @@ dotnet run --project src/Aelena.FileApi.Api
 
 ```bash
 dotnet test
-# 175 tests: 157 unit + 18 endpoint/integration
+# 222+ tests: unit + endpoint + concurrency
 ```
 
 ### Build NuGet Package
 
 ```bash
 dotnet pack src/Aelena.FileApi.Core -c Release -o artifacts/
+```
+
+## CLI — Rich Console Interface
+
+The `fileapi` CLI provides direct access to all Core operations from the terminal, with rich Spectre.Console output.
+
+### Install / Run
+
+```bash
+# Run via dotnet
+dotnet run --project src/Aelena.FileApi.Cli -- <command> [options]
+
+# Or build and use directly
+dotnet build src/Aelena.FileApi.Cli -c Release
+./src/Aelena.FileApi.Cli/bin/Release/net8.0/fileapi <command>
+```
+
+### Commands
+
+```bash
+# PDF operations
+fileapi pdf metrics document.pdf          # Page count, words, OCR needs, signatures
+fileapi pdf extract-text document.pdf     # Extract all text
+fileapi pdf metadata document.pdf         # Title, author, dates, version
+fileapi pdf health document.pdf           # Corruption, fonts, JavaScript checks
+fileapi pdf merge -o merged.pdf a.pdf b.pdf  # Merge PDFs
+fileapi pdf rotate --angle 90 doc.pdf     # Rotate pages
+fileapi pdf encrypt --password s3cret doc.pdf  # Password protect
+fileapi pdf decrypt --password s3cret doc.pdf  # Remove protection
+fileapi pdf search --query "contract" doc.pdf  # Search text
+
+# DOCX operations
+fileapi docx metrics report.docx          # Paragraphs, words, tables, images
+fileapi docx metadata report.docx         # Title, author, revision
+fileapi docx markdown report.docx         # Convert to Markdown
+fileapi docx health report.docx           # Tracked changes, macros
+
+# Image operations
+fileapi image exif photo.jpg              # EXIF metadata + GPS
+fileapi image resize -w 800 photo.jpg     # Resize with aspect ratio
+fileapi image rotate --angle 90 photo.jpg # Rotate
+fileapi image convert --format webp photo.png  # Format conversion
+fileapi image grayscale photo.jpg         # Grayscale
+fileapi image blur --radius 5 photo.jpg   # Gaussian blur
+fileapi image compress --quality 60 photo.jpg  # JPEG compression
+
+# Utilities
+fileapi hash invoice.pdf                  # SHA-256, MD5, SHA-1
+fileapi readability essay.txt             # Flesch, Gunning Fog, SMOG scores
+fileapi pii detect contract.pdf           # Detect emails, SSNs, credit cards
+fileapi txt metrics notes.txt             # Line, word, token counts
+fileapi txt search --query "TODO" notes.txt
+fileapi zip archive.zip                   # List entries with sizes
+fileapi email message.eml                 # Parse headers, body, attachments
 ```
 
 ## Configuration
