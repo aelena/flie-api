@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Aelena.FileApi.Grpc</RootNamespace>
+    <PackageId>Aelena.FileApi.Grpc</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>aelena</Authors>
+    <Description>gRPC service for high-performance document processing — binary streaming and compute-heavy operations.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Aelena.FileApi.Core\Aelena.FileApi.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos\fileapi.proto" GrpcServices="Server" />
+  </ItemGroup>
+
+</Project>
