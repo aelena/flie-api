@@ -412,11 +412,13 @@ One-time setup on nuget.org (Account → Trusted Publishing), one policy per rep
 | Repository Owner | `aelena` |
 | Repository | `file-api` |
 | Workflow File | `release.yml` (file name only, no path) |
-| Environment | leave empty |
+| Environment | `production` (the workflow declares it; the two must match) |
 | Glob Patterns and Packages | `Aelena.FileApi.*` |
 
-Then add a repository **variable or secret** `NUGET_USER` holding the nuget.org
-profile name (not an email address).
+Create a GitHub environment named `production` in the repository, and add a
+secret `NUGET_USER` holding the nuget.org profile name (not an email address).
+
+A policy is bound to **one** repository, so each repository needs its own.
 
 To cut a release: set `<Version>` in the three packable csproj files, commit, then
 
