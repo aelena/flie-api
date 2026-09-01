@@ -3,13 +3,14 @@
   <PropertyGroup>
     <RootNamespace>Aelena.FileApi.Core</RootNamespace>
     <PackageId>Aelena.FileApi.Core</PackageId>
-    <Version>0.3.0</Version>
+    <Version>0.3.1</Version>
     <Authors>aelena</Authors>
     <Description>Pure document processing library — DOCX, image, email, hash, PII, readability, text and ZIP. Zero ASP.NET dependencies, MIT licensed, no copyleft dependencies. PDF operations live in Aelena.FileApi.Core.Pdf, which is AGPL because iText 7 is.</Description>
     <PackageTags>document;docx;image;email;hash;pii;readability;zip</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/aelena/fileapi</RepositoryUrl>
     <IsPackable>true</IsPackable>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -36,6 +37,13 @@
     <!-- Image -->
     <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" />
+  </ItemGroup>
+
+
+  <!-- Shown on the NuGet listing page. Each package carries its own, so the
+       licence position is visible before anyone installs it. -->
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

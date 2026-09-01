@@ -19,7 +19,7 @@
     <ToolCommandName>fileapi</ToolCommandName>
     <PackageId>Aelena.FileApi.Cli</PackageId>
     <Title>FileApi CLI</Title>
-    <Version>0.3.0</Version>
+    <Version>0.3.1</Version>
     <Authors>aelena</Authors>
     <Description>Command-line document processing: PDF, DOCX, images, email, hashing, PII detection, readability and ZIP inspection. Installs the `fileapi` command.
 
@@ -32,6 +32,7 @@ IMPORTANT LICENSING NOTE: this tool includes PDF support via Aelena.FileApi.Core
     <RepositoryUrl>https://github.com/aelena/file-api</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <IsPackable>true</IsPackable>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -48,6 +49,13 @@ IMPORTANT LICENSING NOTE: this tool includes PDF support via Aelena.FileApi.Core
   <!-- Dropped by -p:IncludePdf=false; see Directory.Build.props. -->
   <ItemGroup Condition="'$(IncludePdf)' != 'true'">
     <Compile Remove="Commands\PdfCommand.cs" />
+  </ItemGroup>
+
+
+  <!-- Shown on the NuGet listing page. Each package carries its own, so the
+       licence position is visible before anyone installs it. -->
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
