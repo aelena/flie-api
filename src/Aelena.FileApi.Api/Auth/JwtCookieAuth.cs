@@ -15,6 +15,8 @@ public static class JwtCookieAuth
 {
     public const string CookieName = "auth_token";
 
+    private const string BearerPrefix = "Bearer ";
+
     /// <summary>Represents an authenticated user extracted from a JWT.</summary>
     public sealed record UserInfo(string UserId, string Email);
 
@@ -24,31 +26,22 @@ public static class JwtCookieAuth
     /// </summary>
     public static UserInfo? GetUserFromCookie(HttpRequest request, AppSettings settings)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(settings);
+
         if (!request.Cookies.TryGetValue(CookieName, out var token) || string.IsNullOrWhiteSpace(token))
             return null;
 
         try
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.JwtSecretKey));
-            var handler = new JwtSecurityTokenHandler();
-            var principal = handler.ValidateToken(token, new TokenValidationParameters
-            {
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateLifetime = true,
-                IssuerSigningKey = key,
-                ClockSkew = TimeSpan.FromMinutes(1)
-            }, out _);
+            var principal = new JwtSecurityTokenHandler()
+                .ValidateToken(token, ValidationParameters(settings), out _);
 
-            var userId = principal.FindFirstValue("user_id");
-            var email = principal.FindFirstValue("email") ?? principal.FindFirstValue(ClaimTypes.Email);
-
-            return userId is not null && email is not null
-                ? new UserInfo(userId, email)
-                : null;
+            return ReadUser(principal);
         }
-        catch
+        catch (Exception ex) when (ex is SecurityTokenException or ArgumentException)
         {
+            // An unreadable cookie means "not signed in", not "server error".
             return null;
         }
     }
@@ -59,58 +52,43 @@ public static class JwtCookieAuth
     /// </summary>
     public static string SetCookie(HttpRequest request, HttpResponse response, AppSettings settings)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(response);
+        ArgumentNullException.ThrowIfNull(settings);
+
         var authHeader = request.Headers.Authorization.ToString();
-        if (!authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        if (!authHeader.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
             throw new FileApiException(401, "Missing Bearer token");
 
-        var token = authHeader["Bearer ".Length..].Trim();
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.JwtSecretKey));
+        var token = authHeader[BearerPrefix.Length..].Trim();
 
         ClaimsPrincipal principal;
         try
         {
-            var handler = new JwtSecurityTokenHandler();
-            principal = handler.ValidateToken(token, new TokenValidationParameters
-            {
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateLifetime = true,
-                IssuerSigningKey = key,
-                ClockSkew = TimeSpan.FromMinutes(1)
-            }, out _);
+            principal = new JwtSecurityTokenHandler()
+                .ValidateToken(token, ValidationParameters(settings), out _);
         }
         catch (SecurityTokenExpiredException)
         {
             throw new FileApiException(401, "Token expired");
         }
-        catch
+        catch (Exception ex) when (ex is SecurityTokenException or ArgumentException)
         {
             throw new FileApiException(401, "Invalid token");
         }
 
-        var userId = principal.FindFirstValue("user_id");
-        var email = principal.FindFirstValue("email") ?? principal.FindFirstValue(ClaimTypes.Email);
+        var user = ReadUser(principal)
+            ?? throw new FileApiException(401, "Invalid token: missing user data");
 
-        if (userId is null || email is null)
-            throw new FileApiException(401, "Invalid token: missing user data");
-
-        // Re-sign with fresh expiration
         var now = DateTime.UtcNow;
-        var claims = new[]
-        {
-            new Claim("user_id", userId),
-            new Claim("email", email)
-        };
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var newToken = new JwtSecurityToken(
+        var key = SigningKey(settings);
+        var reissued = new JwtSecurityToken(
             expires: now.AddDays(settings.JwtExpirationDays),
-            claims: claims,
-            signingCredentials: creds,
+            claims: [new Claim("user_id", user.UserId), new Claim("email", user.Email)],
+            signingCredentials: new SigningCredentials(key, settings.AllowedJwtAlgorithms[0]),
             notBefore: now);
 
-        var encoded = new JwtSecurityTokenHandler().WriteToken(newToken);
-
-        response.Cookies.Append(CookieName, encoded, new CookieOptions
+        response.Cookies.Append(CookieName, new JwtSecurityTokenHandler().WriteToken(reissued), new CookieOptions
         {
             HttpOnly = true,
             Secure = true,
@@ -119,6 +97,37 @@ public static class JwtCookieAuth
             Path = "/"
         });
 
-        return email;
+        return user.Email;
     }
+
+    private static UserInfo? ReadUser(ClaimsPrincipal principal)
+    {
+        var userId = principal.FindFirstValue("user_id");
+        var email = principal.FindFirstValue("email") ?? principal.FindFirstValue(ClaimTypes.Email);
+
+        return userId is not null && email is not null ? new UserInfo(userId, email) : null;
+    }
+
+    private static SymmetricSecurityKey SigningKey(AppSettings settings) =>
+        new(Encoding.UTF8.GetBytes(settings.JwtSecretKey));
+
+    /// <summary>Validation rules shared by both entry points.</summary>
+    /// <remarks>
+    /// <c>ValidAlgorithms</c> pins the signature algorithm to the configured one.
+    /// Without it the handler accepts whatever <c>alg</c> the token declares, and
+    /// <see cref="AppSettings.JwtAlgorithm"/> — which exists to say which algorithm is
+    /// in use — was read by nothing at all.
+    /// </remarks>
+    private static TokenValidationParameters ValidationParameters(AppSettings settings) => new()
+    {
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        RequireSignedTokens = true,
+        RequireExpirationTime = true,
+        ValidAlgorithms = settings.AllowedJwtAlgorithms,
+        IssuerSigningKey = SigningKey(settings),
+        ClockSkew = TimeSpan.FromMinutes(1)
+    };
 }

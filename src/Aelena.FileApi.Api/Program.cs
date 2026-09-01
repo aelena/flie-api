@@ -21,6 +21,11 @@ try
     builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
     var appSettings = builder.Configuration.GetSection("AppSettings").Get<AppSettings>() ?? new AppSettings();
 
+    // Fail at startup rather than serving traffic that would accept forged sessions:
+    // the checked-in placeholder JWT secret lets anyone who has read the repository
+    // mint a valid token.
+    appSettings.ThrowIfUnsafeForProduction(builder.Environment.IsDevelopment());
+
     // ── Serilog ──────────────────────────────────────────────────────────
     builder.Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration));
 
