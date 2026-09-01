@@ -1,11 +1,11 @@
 # FileApi — Document Processing & AI Analysis Platform
 
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
-[![Tests](https://img.shields.io/badge/tests-222%2B%20passing-brightgreen)]()
-[![.NET](https://img.shields.io/badge/.NET-8.0-blue)]()
+[![Tests](https://img.shields.io/badge/tests-298%20passing-brightgreen)]()
+[![.NET](https://img.shields.io/badge/.NET-10.0-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
-A comprehensive .NET 8 / C# 12 document processing platform. Three ports — **HTTP API**, **Rich CLI**, and **NuGet library** — all powered by the same pure Core library with zero ASP.NET dependencies.
+A comprehensive .NET 10 / C# 14 document processing platform. Three ports — **HTTP API**, **Rich CLI**, and **NuGet library** — all powered by the same pure Core library with zero ASP.NET dependencies.
 
 ## Architecture
 
@@ -29,7 +29,7 @@ A comprehensive .NET 8 / C# 12 document processing platform. Three ports — **H
 - **Pure library** — Core has zero `Microsoft.Extensions.*` dependencies; usable in console apps, desktop apps, cloud functions, anywhere
 - **Ports & adapters** — API and CLI are thin wrappers calling static Core services
 - **Thread-safe** — All Core operations are static and proven safe under concurrent load
-- **Terse & functional** — C# 12 records, pattern matching, expression-bodied lambdas
+- **Terse & functional** — records, pattern matching, expression-bodied lambdas
 - **Observability** — OpenTelemetry traces + metrics + logs (API layer), Serilog structured logging
 - **Cloud-ready** — Docker multi-stage build, deployable to Azure Container Apps, App Service, AKS
 
@@ -37,7 +37,7 @@ A comprehensive .NET 8 / C# 12 document processing platform. Three ports — **H
 
 | Category | Description | Status |
 |----------|-------------|--------|
-| **PDF Toolkit** | 30+ operations: metrics, metadata, extract text/pages/markdown/tables/annotations/bookmarks, merge, split, rotate, reorder, delete pages, watermark, encrypt/decrypt, compress, page numbers, redact, form fields, health check | Implemented |
+| **PDF Toolkit** | 30+ operations: metrics, metadata, extract text/pages/markdown/tables/annotations/bookmarks, merge, split, rotate, reorder, delete pages, watermark, encrypt/decrypt, compress, page numbers, form fields, health check | Implemented |
 | **DOCX Processing** | Metrics, metadata, paragraph extraction, markdown conversion, search, health check, metadata removal | Implemented |
 | **Image Processing** | Resize, rotate, crop, convert (PNG/JPEG/WebP/BMP/GIF/TIFF), thumbnail, flip, blur, grayscale, compress, strip metadata, EXIF, auto-orient, invert, edge detect, equalize, color palette, base64 | Implemented |
 | **PII Detection** | Regex-based scanning for emails, credit cards (Visa/MC/Amex), IBANs, SSNs, phone numbers, national IDs (US/ES/FR/DE/IT/UK/PT), dates of birth | Implemented |
@@ -80,7 +80,7 @@ A comprehensive .NET 8 / C# 12 document processing platform. Three ports — **H
 | Video | `/video/metadata` | 1 | Container/track metadata |
 | Markdown | `/markdown/to-pdf` | 1 | Markdown to PDF conversion |
 | Strip | `/strip/images` | 1 | Remove images from documents |
-| Redact | `/redact` | 1 | Black-box text redaction |
+| Redact | `/redact`, `/pdf/redact` | 2 | Text redaction — **not implemented, returns 501** |
 
 ## Authentication
 
@@ -225,7 +225,9 @@ All settings via environment variables or `appsettings.json` (section `AppSettin
 ```
 netdocserve/
 ├── Aelena.FileApi.sln
-├── Directory.Build.props          # C# 12, nullable, TreatWarningsAsErrors
+├── Directory.Build.props          # net10.0, C# 14, nullable, TreatWarningsAsErrors
+├── Directory.Packages.props       # Central Package Management: one pinned version per package
+├── Directory.Build.targets        # Test-project settings (imports after each csproj)
 ├── docker-compose.yml
 ├── prompts/                       # Scriban templates for LLM prompts
 │

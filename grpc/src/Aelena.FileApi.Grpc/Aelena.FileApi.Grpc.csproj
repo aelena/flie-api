@@ -17,7 +17,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="Protos\fileapi.proto" GrpcServices="Server" />
+    <!--
+      "Both" so the client stub is generated here alongside the server base.
+      The test project used to generate its own from the same .proto while also
+      referencing this one, producing two definitions of every message type and
+      630 CS0436 conflict warnings that TreatWarningsAsErrors had to be switched
+      off to tolerate.
+    -->
+    <Protobuf Include="Protos\fileapi.proto" GrpcServices="Both" />
   </ItemGroup>
 
 </Project>
