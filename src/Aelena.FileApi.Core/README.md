@@ -100,9 +100,12 @@ iText is absent from it.
 
 ## Note on ImageSharp
 
-Imaging goes through `SixLabors.ImageSharp`, which is under the Six Labors Split
-License: free for open-source and for organisations below a revenue threshold,
-commercial licence above it. Not copyleft, but worth knowing where you stand.
+Imaging goes through `SixLabors.ImageSharp`, under the Six Labors Split License.
+The clause that matters grants Apache 2.0 to anyone "consuming the Work as a
+**Transitive Package Dependency**" — which is what installing this package makes
+it. So you receive ImageSharp under Apache 2.0 regardless of your organisation's
+size; the commercial threshold applies to a *direct* dependency on ImageSharp,
+not to users of this package.
 
 ## More
 

@@ -1,10 +1,14 @@
 # FileApi — Document Processing & AI Analysis Platform
 
-[![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
+[![CI](https://github.com/aelena/file-api/actions/workflows/ci.yml/badge.svg)](https://github.com/aelena/file-api/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-580%20passing-brightgreen)]()
-[![.NET](https://img.shields.io/badge/.NET-10.0%20%7C%2011.0-blue)]()
-[![Core](https://img.shields.io/badge/Core-MIT-green)]()
-[![Core.Pdf](https://img.shields.io/badge/Core.Pdf-AGPL--3.0-red)]()
+[![.NET](https://img.shields.io/badge/.NET-10.0%20%7C%2011.0-512BD4)]()
+
+| Package | Version | Downloads | Licence |
+|---------|---------|-----------|---------|
+| [`Aelena.FileApi.Core`](https://www.nuget.org/packages/Aelena.FileApi.Core) | [![NuGet](https://img.shields.io/nuget/v/Aelena.FileApi.Core.svg?logo=nuget)](https://www.nuget.org/packages/Aelena.FileApi.Core) | [![Downloads](https://img.shields.io/nuget/dt/Aelena.FileApi.Core.svg?logo=nuget)](https://www.nuget.org/packages/Aelena.FileApi.Core) | ![MIT](https://img.shields.io/badge/MIT-green) |
+| [`Aelena.FileApi.Core.Pdf`](https://www.nuget.org/packages/Aelena.FileApi.Core.Pdf) | [![NuGet](https://img.shields.io/nuget/v/Aelena.FileApi.Core.Pdf.svg?logo=nuget)](https://www.nuget.org/packages/Aelena.FileApi.Core.Pdf) | [![Downloads](https://img.shields.io/nuget/dt/Aelena.FileApi.Core.Pdf.svg?logo=nuget)](https://www.nuget.org/packages/Aelena.FileApi.Core.Pdf) | ![AGPL-3.0](https://img.shields.io/badge/AGPL--3.0-red) |
+| [`Aelena.FileApi.Cli`](https://www.nuget.org/packages/Aelena.FileApi.Cli) | [![NuGet](https://img.shields.io/nuget/v/Aelena.FileApi.Cli.svg?logo=nuget)](https://www.nuget.org/packages/Aelena.FileApi.Cli) | [![Downloads](https://img.shields.io/nuget/dt/Aelena.FileApi.Cli.svg?logo=nuget)](https://www.nuget.org/packages/Aelena.FileApi.Cli) | ![AGPL-3.0](https://img.shields.io/badge/AGPL--3.0-red) |
 
 A comprehensive .NET 10 / C# 14 document processing platform. Four ports available:
 
@@ -446,6 +450,10 @@ Two licences, by package — see the [licensing section](#️-licensing--read-th
   inherited from iText 7. The repository's own source is MIT; the AGPL obligation
   comes from the dependency, and applies to anything that ships or serves it.
 
-Other dependencies keep their own terms. Notably `SixLabors.ImageSharp` is under the
-Six Labors Split License: free for open-source and small-business use, commercial
-licence otherwise.
+Other dependencies keep their own terms. `SixLabors.ImageSharp` is under the
+Six Labors Split License, and the relevant clause is favourable: it grants
+Apache 2.0 to anyone "consuming the Work as a **Transitive Package Dependency**".
+Installing `Aelena.FileApi.Core` brings ImageSharp in indirectly, which is exactly
+that — so consumers get it under Apache 2.0 whatever their size. The commercial
+threshold applies to a *direct* dependency on ImageSharp, not to users of this
+package.
