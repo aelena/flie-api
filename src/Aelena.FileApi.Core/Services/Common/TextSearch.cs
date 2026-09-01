@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using Aelena.FileApi.Core.Errors;
+using Aelena.FileApi.Core.Models;
 
 namespace Aelena.FileApi.Core.Services.Common;
 
@@ -16,35 +18,51 @@ public static class TextSearch
     /// <param name="pattern">Regex pattern. Mutually exclusive with <paramref name="query"/>.</param>
     /// <param name="contextChars">Number of context characters to include before and after each match.</param>
     /// <returns>List of matches with position and context.</returns>
-    public static IReadOnlyList<Models.SearchMatch> Search(
+    /// <exception cref="FileApiException">
+    /// Status 400 when neither or both of <paramref name="query"/> and <paramref name="pattern"/>
+    /// are given, when the pattern does not compile, or when matching times out.
+    /// </exception>
+    public static IReadOnlyList<SearchMatch> Search(
         string text,
         string? query = null,
         string? pattern = null,
         int contextChars = 80)
     {
+        ArgumentNullException.ThrowIfNull(text);
+
+        // These were ArgumentException, which the HTTP host reported as a 500 even
+        // though sending both parameters is squarely the caller's mistake.
         if (query is not null && pattern is not null)
-            throw new ArgumentException("Provide either 'query' or 'pattern', not both");
+            throw new FileApiException(400,
+                "Provide either 'query' (literal text) or 'pattern' (a regular expression), not both.");
+
         if (query is null && pattern is null)
-            throw new ArgumentException("Provide either 'query' or 'pattern'");
+            throw new FileApiException(400,
+                "Provide either 'query' (literal text) or 'pattern' (a regular expression).");
 
-        var regex = query is not null
-            ? new Regex(Regex.Escape(query), RegexOptions.IgnoreCase)
-            : new Regex(pattern!, RegexOptions.None);
+        if (contextChars < 0)
+            throw new FileApiException(400, "'contextChars' cannot be negative.");
 
-        var matches = new List<Models.SearchMatch>();
+        var expression = query is not null
+            ? UserRegex.Literal(query)
+            : UserRegex.Compile(pattern!);
 
-        foreach (Match m in regex.Matches(text))
-        {
-            var ctxStart = Math.Max(0, m.Index - contextChars);
-            var ctxEnd = Math.Min(text.Length, m.Index + m.Length + contextChars);
+        var describedAs = query ?? pattern!;
 
-            matches.Add(new Models.SearchMatch(
-                Match: m.Value,
-                Start: m.Index,
-                End: m.Index + m.Length,
-                Context: text[ctxStart..ctxEnd]));
-        }
+        return UserRegex.Guard(
+            () => expression.Matches(text).Select(m => ToMatch(m, text, contextChars)).ToArray(),
+            describedAs);
+    }
 
-        return matches;
+    private static SearchMatch ToMatch(Match m, string text, int contextChars)
+    {
+        var start = Math.Max(0, m.Index - contextChars);
+        var end = Math.Min(text.Length, m.Index + m.Length + contextChars);
+
+        return new SearchMatch(
+            Match: m.Value,
+            Start: m.Index,
+            End: m.Index + m.Length,
+            Context: text[start..end]);
     }
 }

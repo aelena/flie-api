@@ -1,3 +1,4 @@
+using Aelena.FileApi.Core.Errors;
 using Aelena.FileApi.Core.Services.Common;
 using FluentAssertions;
 using Xunit;
@@ -55,15 +56,75 @@ public class TextSearchTests
         matches.Should().BeEmpty();
     }
 
-    [Fact]
-    public void Search_BothQueryAndPattern_Throws() =>
-        FluentActions.Invoking(() => TextSearch.Search("text", query: "a", pattern: "b"))
-            .Should().Throw<ArgumentException>()
-            .WithMessage("*not both*");
+    // ── Rejections ───────────────────────────────────────────────────────
+    //
+    // All of these are the caller's mistake and must read as 400s. They were
+    // ArgumentException before, which the HTTP host could only render as a 500.
 
     [Fact]
-    public void Search_NeitherQueryNorPattern_Throws() =>
-        FluentActions.Invoking(() => TextSearch.Search("text"))
-            .Should().Throw<ArgumentException>()
-            .WithMessage("*either*");
+    public void Search_BothQueryAndPattern_IsBadRequest()
+    {
+        var ex = FluentActions.Invoking(() => TextSearch.Search("text", query: "a", pattern: "b"))
+            .Should().Throw<FileApiException>().Which;
+
+        ex.StatusCode.Should().Be(400);
+        ex.Detail.Should().Contain("not both");
+    }
+
+    [Fact]
+    public void Search_NeitherQueryNorPattern_IsBadRequest()
+    {
+        var ex = FluentActions.Invoking(() => TextSearch.Search("text"))
+            .Should().Throw<FileApiException>().Which;
+
+        ex.StatusCode.Should().Be(400);
+        ex.Detail.Should().Contain("either");
+    }
+
+    [Fact]
+    public void Search_MalformedPattern_IsBadRequestQuotingThePattern()
+    {
+        var ex = FluentActions.Invoking(() => TextSearch.Search("text", pattern: "(unclosed"))
+            .Should().Throw<FileApiException>().Which;
+
+        ex.StatusCode.Should().Be(400);
+        ex.Title.Should().Be("Invalid Pattern");
+        ex.Detail.Should().Contain("(unclosed");
+    }
+
+    [Fact]
+    public void Search_NegativeContext_IsBadRequest() =>
+        FluentActions.Invoking(() => TextSearch.Search("text", query: "t", contextChars: -1))
+            .Should().Throw<FileApiException>()
+            .Which.StatusCode.Should().Be(400);
+
+    [Fact]
+    public void Search_NullText_ThrowsArgumentNullException() =>
+        FluentActions.Invoking(() => TextSearch.Search(null!, query: "a"))
+            .Should().Throw<ArgumentNullException>();
+
+    [Fact]
+    public void Search_ContextIsClampedToTheTextBounds()
+    {
+        // A context window wider than the document must not index out of range.
+        var matches = TextSearch.Search("abc", query: "b", contextChars: 1000);
+
+        matches.Should().ContainSingle();
+        matches[0].Context.Should().Be("abc");
+    }
+
+    [Fact]
+    public void Search_CatastrophicPattern_TimesOutAsBadRequest()
+    {
+        // Both the pattern and the text come from the caller, so a nested quantifier
+        // against a long non-matching run is a denial of service on a shared process.
+        // Without a match timeout this call never returns.
+        var evil = new string('a', 40) + "!";
+
+        var ex = FluentActions.Invoking(() => TextSearch.Search(evil, pattern: "^(a+)+$"))
+            .Should().Throw<FileApiException>().Which;
+
+        ex.StatusCode.Should().Be(400);
+        ex.Title.Should().Be("Pattern Too Slow");
+    }
 }

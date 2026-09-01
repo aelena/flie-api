@@ -75,11 +75,15 @@ public class DocxServiceTests
     }
 
     [Fact]
-    public void ExtractPages_OutOfRange_Throws()
+    public void ExtractPages_OutOfRange_IsBadRequestNamingTheParagraphCount()
     {
         var data = CreateSimpleDocx(3);
-        FluentActions.Invoking(() => DocxService.ExtractPages(data, "test.docx", "1-5"))
-            .Should().Throw<ArgumentException>();
+
+        var ex = FluentActions.Invoking(() => DocxService.ExtractPages(data, "test.docx", "1-5"))
+            .Should().Throw<FileApiException>().Which;
+
+        ex.StatusCode.Should().Be(400);
+        ex.Detail.Should().Contain("out of bounds");
     }
 
     // ── Search ───────────────────────────────────────────────────────────

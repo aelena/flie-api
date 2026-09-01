@@ -83,10 +83,16 @@ try
     var app = builder.Build();
 
     // ── Middleware pipeline (order matters: outermost first) ──────────────
+    //
+    // Audit sits outside the exception handler so it records the status the caller
+    // actually received. Inside it — where it used to be — it ran before
+    // ExceptionMiddleware had mapped the failure, so every failed request was logged
+    // as its pre-failure status, and requests rejected by the rate limiter never
+    // reached it at all.
     app.UseSerilogRequestLogging();
+    app.UseMiddleware<AuditLogMiddleware>();
     app.UseMiddleware<ExceptionMiddleware>();
     app.UseMiddleware<AuthRateLimitMiddleware>();
-    app.UseMiddleware<AuditLogMiddleware>();
     app.UseCors();
 
     if (app.Environment.IsDevelopment())

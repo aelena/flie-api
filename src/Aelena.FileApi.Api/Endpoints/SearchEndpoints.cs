@@ -10,9 +10,6 @@ public static class SearchEndpoints
     {
         group.MapPost("", async (IFormFile file, string? query, string? pattern) =>
         {
-            if (query is null && pattern is null)
-                throw new FileApiException(400, "Provide either 'query' or 'pattern' (or both)");
-
             await using var ms = new MemoryStream();
             await file.CopyToAsync(ms);
             var data = ms.ToArray();

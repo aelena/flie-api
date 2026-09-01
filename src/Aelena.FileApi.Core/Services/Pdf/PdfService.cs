@@ -48,7 +48,7 @@ public static class PdfService
         try
         {
             using var reader = SafeReader(data);
-            using var doc = new PdfDocument(reader);
+            using var doc = OpenDocument(reader);
             var info = doc.GetDocumentInfo();
             var pageCount = doc.GetNumberOfPages();
             var fullText = new StringBuilder();
@@ -97,13 +97,10 @@ public static class PdfService
                 OcrPages: ocrPages,
                 PagesNeedingOcrCount: ocrPages.Count);
         }
-        catch (iText.Kernel.Exceptions.BadPasswordException)
+        catch (FileApiException ex) when (ex.Title == "Unreadable PDF")
         {
-            throw new FileApiException(422, "PDF is encrypted and requires a password.");
-        }
-        catch (Exception ex) when (ex is iText.IO.Exceptions.IOException or InvalidOperationException)
-        {
-            // Corrupt or unreadable — return a metrics shell with IsCorrupt = true
+            // Metrics is the one operation that answers for a broken file rather than
+            // refusing it: callers use it to *ask* whether a document is usable.
             return new PdfMetrics(fileName, data.Length, 0, 0, 0, null, null, null,
                 0, 0, 0, 0, true, false, false, [], 0);
         }
@@ -120,7 +117,7 @@ public static class PdfService
     public static PdfMetadataResponse GetMetadata(byte[] data, string fileName)
     {
         using var reader = SafeReader(data);
-        using var doc = new PdfDocument(reader);
+        using var doc = OpenDocument(reader);
         var info = doc.GetDocumentInfo();
         var pageCount = doc.GetNumberOfPages();
 
@@ -180,7 +177,7 @@ public static class PdfService
     public static FormFieldsResponse ExtractFormFields(byte[] data, string fileName)
     {
         using var reader = SafeReader(data);
-        using var doc = new PdfDocument(reader);
+        using var doc = OpenDocument(reader);
         var form = PdfFormCreator.GetAcroForm(doc, false);
 
         if (form is null)
@@ -245,7 +242,7 @@ public static class PdfService
         try
         {
             using var reader = SafeReader(data);
-            using var doc = new PdfDocument(reader);
+            using var doc = OpenDocument(reader);
             var pageCount = doc.GetNumberOfPages();
 
             // Encryption
@@ -341,7 +338,7 @@ public static class PdfService
     public static PdfTextResponse ExtractText(byte[] data, string fileName, string? pages = null)
     {
         using var reader = SafeReader(data);
-        using var doc = new PdfDocument(reader);
+        using var doc = OpenDocument(reader);
         var totalPages = doc.GetNumberOfPages();
         var indices = pages is not null
             ? PageRangeParser.Parse(pages, totalPages)
@@ -364,7 +361,7 @@ public static class PdfService
     public static ExtractionResponse ExtractPages(byte[] data, string fileName, string pages)
     {
         using var reader = SafeReader(data);
-        using var doc = new PdfDocument(reader);
+        using var doc = OpenDocument(reader);
         var totalPages = doc.GetNumberOfPages();
         var indices = PageRangeParser.Parse(pages, totalPages);
 
@@ -388,7 +385,7 @@ public static class PdfService
     public static MarkdownResponse ExtractToMarkdown(byte[] data, string fileName, string? pages = null)
     {
         using var reader = SafeReader(data);
-        using var doc = new PdfDocument(reader);
+        using var doc = OpenDocument(reader);
         var totalPages = doc.GetNumberOfPages();
         var indices = pages is not null
             ? PageRangeParser.Parse(pages, totalPages)
@@ -437,7 +434,7 @@ public static class PdfService
             throw new FileApiException(400, "Provide either 'query' or 'pattern'.");
 
         using var reader = SafeReader(data);
-        using var doc = new PdfDocument(reader);
+        using var doc = OpenDocument(reader);
         var allMatches = new List<SearchMatch>();
 
         for (var i = 1; i <= doc.GetNumberOfPages(); i++)
@@ -459,7 +456,7 @@ public static class PdfService
     {
         // TODO: Implement proper table detection with layout analysis.
         using var reader = SafeReader(data);
-        using var doc = new PdfDocument(reader);
+        using var doc = OpenDocument(reader);
         return new PdfTableResponse(fileName, doc.GetNumberOfPages(), 0, []);
     }
 
@@ -472,7 +469,7 @@ public static class PdfService
         using var outStream = new MemoryStream();
         using var reader = SafeReader(data);
         using var writer = new PdfWriter(outStream);
-        using var doc = new PdfDocument(reader, writer);
+        using var doc = OpenDocument(reader, writer);
         doc.Close();
 
         var stem = Path.GetFileNameWithoutExtension(fileName);
@@ -504,7 +501,7 @@ public static class PdfService
         foreach (var (fileData, name) in files)
         {
             using var srcReader = SafeReader(fileData);
-            using var srcDoc = new PdfDocument(srcReader);
+            using var srcDoc = OpenDocument(srcReader);
             var srcPages = srcDoc.GetNumberOfPages();
             merger.Merge(srcDoc, 1, srcPages);
 
@@ -535,7 +532,7 @@ public static class PdfService
         var stem = System.IO.Path.GetFileNameWithoutExtension(fileName);
 
         using var srcReader = SafeReader(data);
-        using var srcDoc = new PdfDocument(srcReader);
+        using var srcDoc = OpenDocument(srcReader);
         var totalPages = srcDoc.GetNumberOfPages();
 
         using var zipStream = new MemoryStream();
@@ -583,7 +580,7 @@ public static class PdfService
         using var outStream = new MemoryStream();
         using var reader = SafeReader(data);
         using var writer = new PdfWriter(outStream);
-        using var doc = new PdfDocument(reader, writer);
+        using var doc = OpenDocument(reader, writer);
         var totalPages = doc.GetNumberOfPages();
         var indices = pages is not null
             ? PageRangeParser.Parse(pages, totalPages)
@@ -616,7 +613,7 @@ public static class PdfService
             .ToList();
 
         using var srcReader = SafeReader(data);
-        using var srcDoc = new PdfDocument(srcReader);
+        using var srcDoc = OpenDocument(srcReader);
         var totalPages = srcDoc.GetNumberOfPages();
 
         if (pageNums.Count != totalPages)
@@ -648,7 +645,7 @@ public static class PdfService
     public static (string FileName, byte[] Data) DeletePages(byte[] data, string fileName, string pages)
     {
         using var srcReader = SafeReader(data);
-        using var srcDoc = new PdfDocument(srcReader);
+        using var srcDoc = OpenDocument(srcReader);
         var totalPages = srcDoc.GetNumberOfPages();
         var toDelete = PageRangeParser.Parse(pages, totalPages).ToHashSet();
 
@@ -690,7 +687,7 @@ public static class PdfService
         using var outStream = new MemoryStream();
         using var reader = SafeReader(data);
         using var writer = new PdfWriter(outStream);
-        using var doc = new PdfDocument(reader, writer);
+        using var doc = OpenDocument(reader, writer);
         var font = PdfFontFactory.CreateFont(StandardFonts.HELVETICA_BOLD);
         var pdfColor = ParseColor(color);
 
@@ -743,7 +740,7 @@ public static class PdfService
         using var outStream = new MemoryStream();
         using var reader = SafeReader(data);
         using var writer = new PdfWriter(outStream);
-        using var doc = new PdfDocument(reader, writer);
+        using var doc = OpenDocument(reader, writer);
 
         // Clear standard fields
         var info = doc.GetDocumentInfo();
@@ -788,7 +785,7 @@ public static class PdfService
                 EncryptionConstants.ALLOW_PRINTING,
                 EncryptionConstants.ENCRYPTION_AES_256);
         using var writer = new PdfWriter(outStream, wp);
-        using var doc = new PdfDocument(reader, writer);
+        using var doc = OpenDocument(reader, writer);
         doc.Close();
 
         var stem = System.IO.Path.GetFileNameWithoutExtension(fileName);
@@ -811,7 +808,7 @@ public static class PdfService
             using var reader = new PdfReader(new MemoryStream(data), rp);
             using var outStream = new MemoryStream();
             using var writer = new PdfWriter(outStream);
-            using var doc = new PdfDocument(reader, writer);
+            using var doc = OpenDocument(reader, writer);
             doc.Close();
 
             var stem = System.IO.Path.GetFileNameWithoutExtension(fileName);
@@ -845,7 +842,7 @@ public static class PdfService
             .SetFullCompressionMode(true)
             .SetCompressionLevel(9);
         using var writer = new PdfWriter(outStream, wp);
-        using var doc = new PdfDocument(reader, writer);
+        using var doc = OpenDocument(reader, writer);
         doc.Close();
 
         var compressed = outStream.ToArray();
@@ -869,7 +866,7 @@ public static class PdfService
             throw new FileApiException(400, "Count must be between 1 and 20.");
 
         using var srcReader = SafeReader(data);
-        using var srcDoc = new PdfDocument(srcReader);
+        using var srcDoc = OpenDocument(srcReader);
         var totalPages = srcDoc.GetNumberOfPages();
         var insertAfter = PageRangeParser.Parse(afterPages, totalPages)
             .Select(i => i + 1) // convert 0-based to 1-based
@@ -915,7 +912,7 @@ public static class PdfService
         using var outStream = new MemoryStream();
         using var reader = SafeReader(data);
         using var writer = new PdfWriter(outStream);
-        using var doc = new PdfDocument(reader, writer);
+        using var doc = OpenDocument(reader, writer);
         var font = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
         var color = ParseColor(fontColor);
         var totalPages = doc.GetNumberOfPages();
@@ -956,7 +953,7 @@ public static class PdfService
     public static object ExtractAnnotations(byte[] data, string fileName)
     {
         using var reader = SafeReader(data);
-        using var doc = new PdfDocument(reader);
+        using var doc = OpenDocument(reader);
         var annotations = new List<Dictionary<string, object?>>();
 
         for (var i = 1; i <= doc.GetNumberOfPages(); i++)
@@ -988,7 +985,7 @@ public static class PdfService
     public static object ExtractBookmarks(byte[] data, string fileName)
     {
         using var reader = SafeReader(data);
-        using var doc = new PdfDocument(reader);
+        using var doc = OpenDocument(reader);
         var outlines = doc.GetOutlines(false);
         var bookmarks = new List<Dictionary<string, object?>>();
 
@@ -999,8 +996,7 @@ public static class PdfService
     }
 
     /// <summary>
-    /// Redact occurrences of the specified terms (comma-separated) and/or a regex pattern
-    /// from the PDF text layer. Counts matches per page for reporting purposes.
+    /// Not implemented: always throws <see cref="FileApiException"/> with status 501.
     /// </summary>
     /// <param name="data">Raw PDF bytes.</param>
     /// <param name="fileName">Original file name.</param>
@@ -1008,59 +1004,85 @@ public static class PdfService
     /// <param name="regex">Optional regex pattern to redact.</param>
     /// <param name="pages">Optional page range. All pages if null.</param>
     /// <param name="replacement">Replacement string (default "***").</param>
-    /// <returns>Tuple of (output file name, redacted PDF bytes, total redactions found).</returns>
+    /// <exception cref="FileApiException">Always, with status 501.</exception>
     /// <remarks>
-    /// TODO: Integrate iText7 pdfSweep add-on for true content-stream redaction with
-    /// black rectangles and underlying text removal. Current implementation counts matches
-    /// and copies the document, but does not modify the visible text.
+    /// <para>
+    /// This used to count matches, copy the document through unchanged, and return it as
+    /// <c>&lt;name&gt;_redacted.pdf</c> with a non-zero redaction count — so callers received
+    /// a 200 and a file whose "redacted" text was still fully selectable and extractable.
+    /// A redaction tool that silently does nothing is worse than one that refuses, so it
+    /// now refuses, matching the <c>/redact</c> endpoint that already answered 501.
+    /// </para>
+    /// <para>
+    /// Implementing it properly means rewriting page content streams (iText's pdfSweep
+    /// add-on, or equivalent). Drawing black rectangles over the words is not sufficient:
+    /// the text layer underneath survives copy-paste and text extraction.
+    /// </para>
     /// </remarks>
     public static (string FileName, byte[] Data, int TotalRedactions) RedactText(
         byte[] data, string fileName, string terms, string? regex,
-        string? pages, string? replacement)
-    {
-        var rep = replacement ?? "***";
-
-        using var reader = SafeReader(data);
-        using var outStream = new MemoryStream();
-        using var writer = new PdfWriter(outStream);
-        using var doc = new PdfDocument(reader, writer);
-        var totalPages = doc.GetNumberOfPages();
-        var indices = pages is not null
-            ? PageRangeParser.Parse(pages, totalPages)
-            : Enumerable.Range(0, totalPages).ToList();
-
-        // Build search patterns
-        var patterns = new List<Regex>();
-        if (!string.IsNullOrWhiteSpace(terms))
-        {
-            foreach (var term in terms.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                patterns.Add(new Regex(Regex.Escape(term), RegexOptions.IgnoreCase));
-        }
-        if (!string.IsNullOrWhiteSpace(regex))
-            patterns.Add(new Regex(regex));
-
-        var totalRedactions = 0;
-        foreach (var idx in indices)
-        {
-            var text = ExtractPageText(doc.GetPage(idx + 1));
-            foreach (var pat in patterns)
-                totalRedactions += pat.Matches(text).Count;
-        }
-
-        doc.Close();
-        var stem = System.IO.Path.GetFileNameWithoutExtension(fileName);
-        return ($"{stem}_redacted.pdf", outStream.ToArray(), totalRedactions);
-    }
+        string? pages, string? replacement) =>
+        throw new FileApiException(501,
+            "PDF redaction is not implemented. Removing text from a PDF means rewriting the "
+            + "page content streams; drawing boxes over the words leaves them selectable and "
+            + "extractable, which is worse than refusing. Use /redact once it ships.",
+            title: "Not Implemented");
 
     // ────────────────────────────── Private Helpers ──────────────────────────────
 
-    /// <summary>Create a <see cref="PdfReader"/> with unethical reading enabled for broad compatibility.</summary>
+    /// <summary>
+    /// Create a <see cref="PdfReader"/> with unethical reading enabled for broad compatibility,
+    /// reporting an unreadable file as a client error rather than an iText exception.
+    /// </summary>
+    /// <remarks>
+    /// Only <see cref="GetMetrics"/> used to handle this. Every other entry point let
+    /// iText's own exception escape, so posting a renamed .txt to /pdf/metadata answered
+    /// 500 "An unexpected error occurred" — and the CLI printed a stack trace. Both now
+    /// get a 422 that says what is actually wrong with the file.
+    /// </remarks>
     private static PdfReader SafeReader(byte[] data)
     {
-        var reader = new PdfReader(new MemoryStream(data));
-        reader.SetUnethicalReading(true);
-        return reader;
+        try
+        {
+            var reader = new PdfReader(new MemoryStream(data));
+            reader.SetUnethicalReading(true);
+            return reader;
+        }
+        catch (Exception ex) when (ex is iText.IO.Exceptions.IOException or InvalidOperationException)
+        {
+            throw new FileApiException(422, UnreadableDetail(ex), title: "Unreadable PDF");
+        }
     }
+
+    /// <summary>
+    /// Open the document, translating iText's failures the same way <see cref="SafeReader"/> does.
+    /// </summary>
+    /// <remarks>
+    /// Decryption happens here rather than in the reader, so a password-protected file
+    /// fails at this point and not the previous one.
+    /// </remarks>
+    private static PdfDocument OpenDocument(PdfReader reader, PdfWriter? writer = null)
+    {
+        try
+        {
+            return writer is null ? new PdfDocument(reader) : new PdfDocument(reader, writer);
+        }
+        catch (iText.Kernel.Exceptions.BadPasswordException)
+        {
+            throw new FileApiException(422,
+                "This PDF is password-protected. Decrypt it with its password before running this operation.",
+                title: "Password Required");
+        }
+        catch (Exception ex) when (ex is iText.IO.Exceptions.IOException or InvalidOperationException)
+        {
+            throw new FileApiException(422, UnreadableDetail(ex), title: "Unreadable PDF");
+        }
+    }
+
+    private static string UnreadableDetail(Exception ex) =>
+        $"The file could not be read as a PDF ({ex.Message}). "
+        + "Check that it is not truncated, and that it is really a PDF rather than another "
+        + "format that has been given a .pdf name.";
 
     /// <summary>Extract text from a single page using <see cref="LocationTextExtractionStrategy"/>.</summary>
     private static string ExtractPageText(PdfPage page) =>

@@ -9,6 +9,9 @@ namespace Aelena.FileApi.Api.Middleware;
 /// </summary>
 public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> log)
 {
+    /// <summary>The media type RFC 9457 requires for a problem document.</summary>
+    public const string ProblemJson = "application/problem+json";
+
     public async Task InvokeAsync(HttpContext ctx)
     {
         try
@@ -27,6 +30,11 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
                 log, ex, StatusCodes.Status400BadRequest, ctx.Request.Method, ctx.Request.Path.Value, ex.Message);
             await WriteProblem(ctx, StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
+        catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+        {
+            // The caller hung up. There is nobody left to answer, and this is not a
+            // fault worth logging at error level alongside genuine failures.
+        }
         catch (Exception ex)
         {
             LogMessages.UnhandledException(log, ex, ctx.Request.Method, ctx.Request.Path.Value);
@@ -35,14 +43,21 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
         }
     }
 
+    /// <summary>Write an RFC 9457 problem document.</summary>
+    /// <remarks>
+    /// The content type is passed to <c>WriteAsJsonAsync</c> rather than assigned
+    /// beforehand: assigning it first looks right but is overwritten, so every error
+    /// response went out as <c>application/json</c> and no client could distinguish a
+    /// problem document from a normal payload by media type alone.
+    /// </remarks>
     private static async Task WriteProblem(
         HttpContext ctx, int status, string title, string detail, string type = "about:blank")
     {
         if (ctx.Response.HasStarted) return;
 
-        var problem = new ProblemDetail(type, title, status, detail, ctx.Request.Path.Value);
         ctx.Response.StatusCode = status;
-        ctx.Response.ContentType = "application/problem+json";
-        await ctx.Response.WriteAsJsonAsync(problem);
+
+        var problem = new ProblemDetail(type, title, status, detail, ctx.Request.Path.Value);
+        await ctx.Response.WriteAsJsonAsync(problem, options: null, contentType: ProblemJson, ctx.RequestAborted);
     }
 }
