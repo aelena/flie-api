@@ -38,12 +38,14 @@ jobs:
 
       # A tag must never publish something that does not pass its own tests.
       - name: Test
+        shell: bash
         run: |
           set -euo pipefail
           dotnet test Aelena.FileApi.sln -c Release
           dotnet test grpc/Aelena.FileApi.Grpc.sln -c Release
 
       - name: Pack
+        shell: bash
         run: |
           set -euo pipefail
           dotnet pack src/Aelena.FileApi.Core/Aelena.FileApi.Core.csproj -c Release -o ./artifacts
@@ -54,6 +56,7 @@ jobs:
       # problem for every consumer, so the boundary is checked before the push and
       # not after.
       - name: Assert the licence boundary holds
+        shell: bash
         run: |
           python3 - <<'EOF'
           import glob, re, sys, zipfile
@@ -83,6 +86,7 @@ jobs:
 
       - name: Verify the tag matches the package version
         if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
         run: |
           tag="${GITHUB_REF_NAME#v}"
           pkg=$(ls artifacts/Aelena.FileApi.Core.[0-9]*.nupkg | head -1)
@@ -103,6 +107,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') && !inputs.dry_run
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        shell: bash
         run: |
           if [ -z "$NUGET_API_KEY" ]; then
             echo "::error::NUGET_API_KEY is not set. Add it under Settings > Secrets and variables > Actions."
@@ -118,6 +123,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') && !inputs.dry_run
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \

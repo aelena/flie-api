@@ -38,6 +38,7 @@ jobs:
           dotnet-quality: preview
 
       - name: Restore
+        shell: bash
         run: |
           set -euo pipefail
           dotnet restore Aelena.FileApi.sln
@@ -45,6 +46,7 @@ jobs:
 
       # TreatWarningsAsErrors is on, so this is also the lint step.
       - name: Build
+        shell: bash
         run: |
           set -euo pipefail
           dotnet build Aelena.FileApi.sln -c Release --no-restore
@@ -91,6 +93,7 @@ jobs:
           dotnet-quality: preview
 
       - name: Pack
+        shell: bash
         run: |
           set -euo pipefail
           dotnet pack src/Aelena.FileApi.Core/Aelena.FileApi.Core.csproj -c Release -o ./artifacts
@@ -102,6 +105,7 @@ jobs:
       # would silently pull copyleft code into every consumer of the MIT one — so
       # the boundary is asserted in CI rather than trusted to review.
       - name: Assert Aelena.FileApi.Core carries no iText dependency
+        shell: bash
         run: |
           python3 - <<'EOF'
           import glob, re, sys, zipfile
@@ -154,6 +158,7 @@ jobs:
         run: dotnet test Aelena.FileApi.sln -c Release --no-build -p:IncludePdf=false
 
       - name: Publish the API and CLI without PDF
+        shell: bash
         run: |
           set -euo pipefail
           dotnet publish src/Aelena.FileApi.Api -f net10.0 -c Release -p:IncludePdf=false -o ./out/api
@@ -163,6 +168,7 @@ jobs:
       # deliberately not matched: MimeKit pulls it in under MIT, so looking for it
       # reports a licence leak that is not one.
       - name: Assert no iText assembly reached the output
+        shell: bash
         run: |
           found=$(find ./out -iname '*itext*' | head -20)
           if [ -n "$found" ]; then
