@@ -154,11 +154,20 @@ try
 catch (Exception ex)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
+
+    // Exit non-zero so that a failed startup is visible as a failure. Without
+    // this the process fell off the end of Main and returned 0, so a container
+    // that refused to start — on the placeholder JWT secret, say — looked to
+    // Docker and Kubernetes exactly like a clean shutdown: `restart: on-failure`
+    // would not restart it and nothing would alert.
+    return 1;
 }
 finally
 {
     Log.CloseAndFlush();
 }
+
+return 0;
 
 // Make Program visible to WebApplicationFactory in test projects
 public partial class Program;

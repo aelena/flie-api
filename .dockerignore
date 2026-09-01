@@ -1,0 +1,35 @@
+# Without this, `COPY src/ src/` drags the host's build output into the image.
+# project.assets.json and the generated nuget.g.props hold absolute host paths,
+# so a Windows obj/ directory copied into a Linux container makes the publish
+# fail inside NuGet's package path resolver — after a clean restore has already
+# succeeded, which makes it look like a restore bug rather than a stale artifact.
+**/bin/
+**/obj/
+artifacts/
+out/
+publish/
+TestResults/
+
+.git/
+.github/
+.vs/
+.vscode/
+.idea/
+
+# Local state and anything secret-shaped.
+data/
+logs/
+*.log
+*.db
+appsettings.Development.json
+*.env
+.env
+*.user
+
+# Not needed to build the image.
+tests/
+grpc/
+graft/
+prompts/**/*.md.bak
+**/*.nupkg
+**/*.snupkg
