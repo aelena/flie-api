@@ -6,9 +6,18 @@
 [![Core](https://img.shields.io/badge/Core-MIT-green)]()
 [![Core.Pdf](https://img.shields.io/badge/Core.Pdf-AGPL--3.0-red)]()
 
-A comprehensive .NET 10 / C# 14 document processing platform. Four ports — **HTTP API**, **rich CLI**, **gRPC service**, and **NuGet library** — all powered by the same pure Core library with zero ASP.NET dependencies.
+A comprehensive .NET 10 / C# 14 document processing platform. Four ports available:
+
+- **HTTP API**
+- **Rich CLI**
+- **gRPC service**
+- **NuGet library**
+
+All powered by the same pure Core library with zero ASP.NET dependencies.
 
 Builds and tests green on **.NET 10 (LTS)** and **.NET 11 preview**.
+
+---
 
 ## ⚠️ Licensing — read this before taking a dependency
 
