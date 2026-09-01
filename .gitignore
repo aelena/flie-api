@@ -37,3 +37,9 @@ logs/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 graft/
+
+## Local developer tooling — machine-specific, not part of the project
+.claude/
+.mcp.json
+# ripgrep reads .ignore before .gitignore; this re-admits graft/ to search only.
+.ignore
