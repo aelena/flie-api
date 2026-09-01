@@ -2,10 +2,12 @@
 
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
 [![Tests](https://img.shields.io/badge/tests-298%20passing-brightgreen)]()
-[![.NET](https://img.shields.io/badge/.NET-10.0-blue)]()
+[![.NET](https://img.shields.io/badge/.NET-10.0%20%7C%2011.0-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
-A comprehensive .NET 10 / C# 14 document processing platform. Three ports — **HTTP API**, **Rich CLI**, and **NuGet library** — all powered by the same pure Core library with zero ASP.NET dependencies.
+A comprehensive .NET 10 / C# 14 document processing platform. Four ports — **HTTP API**, **rich CLI**, **gRPC service**, and **NuGet library** — all powered by the same pure Core library with zero ASP.NET dependencies.
+
+Builds and tests green on **.NET 10 (LTS)** and **.NET 11 preview**.
 
 ## Architecture
 
@@ -20,7 +22,7 @@ A comprehensive .NET 10 / C# 14 document processing platform. Three ports — **
               │              │              │
         ┌─────▼──────┐  ┌────▼────┐  ┌──────▼────┐
         │  HTTP API  │  │   CLI   │  │   gRPC    │
-        │ (MinAPIs)  │  │ (rich)  │  │ (planned) │
+        │ (MinAPIs)  │  │ (rich)  │  │ (grpc/)   │
         └────────────┘  └─────────┘  └───────────┘
 ```
 
@@ -37,7 +39,7 @@ A comprehensive .NET 10 / C# 14 document processing platform. Three ports — **
 
 | Category | Description | Status |
 |----------|-------------|--------|
-| **PDF Toolkit** | 30+ operations: metrics, metadata, extract text/pages/markdown/tables/annotations/bookmarks, merge, split, rotate, reorder, delete pages, watermark, encrypt/decrypt, compress, page numbers, form fields, health check | Implemented |
+| **PDF Toolkit** | 30+ operations: metrics, metadata, extract text/pages/markdown/annotations/bookmarks, merge, split, rotate, reorder, delete pages, watermark, encrypt/decrypt, compress, page numbers, form fields, health check | Implemented |
 | **DOCX Processing** | Metrics, metadata, paragraph extraction, markdown conversion, search, health check, metadata removal | Implemented |
 | **Image Processing** | Resize, rotate, crop, convert (PNG/JPEG/WebP/BMP/GIF/TIFF), thumbnail, flip, blur, grayscale, compress, strip metadata, EXIF, auto-orient, invert, edge detect, equalize, color palette, base64 | Implemented |
 | **PII Detection** | Regex-based scanning for emails, credit cards (Visa/MC/Amex), IBANs, SSNs, phone numbers, national IDs (US/ES/FR/DE/IT/UK/PT), dates of birth | Implemented |
@@ -45,7 +47,7 @@ A comprehensive .NET 10 / C# 14 document processing platform. Three ports — **
 | **Email Parsing** | .eml (RFC 5322 / MIME) parsing with MimeKit — headers, body, attachments | Implemented |
 | **File Hashing** | SHA-256, MD5, SHA-1, composite hash | Implemented |
 | **ZIP Inspection** | List entries with sizes, compression, CRC-32 | Implemented |
-| **Share Links** | CRUD with SQLite persistence, password protection, expiration, access control | Implemented |
+| **Share Links** | CRUD with SQLite persistence, password protection, expiry, recipient restrictions — all enforced on access | Implemented |
 | **Async Jobs** | Compare, summarize, batch — async job pattern with in-memory store and polling | Job pattern ready |
 | **Document Comparison** | Lexical, semantic, summary modes with cross-format support | Job pattern ready; LLM pipeline pending |
 | **AI Analysis** | Summarization, classification, Q&A via LLM | Endpoints ready; LLM pipeline pending |
@@ -136,11 +138,19 @@ dotnet build
 dotnet run --project src/Aelena.FileApi.Api -f net10.0
 ```
 
+The projects multi-target `net10.0` and `net11.0`, so `run`, `publish`, and a
+single-project `build` need `-f`. Without the .NET 11 SDK installed, build the
+LTS target alone:
+
+```bash
+dotnet build -p:TargetFrameworks=net10.0
+```
+
 ### Run Tests
 
 ```bash
 dotnet test
-# 222+ tests: unit + endpoint + concurrency
+# 298 tests on each framework: unit + endpoint + concurrency + error-contract
 ```
 
 ### Build NuGet Package
@@ -161,7 +171,7 @@ dotnet run --project src/Aelena.FileApi.Cli -f net10.0 -- <command> [options]
 
 # Or build and use directly
 dotnet build src/Aelena.FileApi.Cli -c Release -f net10.0
-./src/Aelena.FileApi.Cli/bin/Release/net8.0/fileapi <command>
+./src/Aelena.FileApi.Cli/bin/Release/net10.0/fileapi <command>
 ```
 
 ### Commands
@@ -214,7 +224,8 @@ All settings via environment variables or `appsettings.json` (section `AppSettin
 | `AppSettings__PublicLlmModel` | `gpt-4o` | Cloud LLM model |
 | `AppSettings__PrivateLlmBaseUrl` | `http://host.docker.internal:3000/api/v1` | Local LLM endpoint |
 | `AppSettings__PrivateLlmApiKey` | | Local LLM API key |
-| `AppSettings__JwtSecretKey` | `your-secret-key-change-in-production` | JWT signing key |
+| `AppSettings__JwtSecretKey` | `your-secret-key-change-in-production` | JWT signing key. **The default is a placeholder** — outside `Development` the app refuses to start until it is replaced with a random value of at least 32 bytes. |
+| `AppSettings__JwtAlgorithm` | `HS256` | Signing algorithm; the only one accepted on validation. `HS256`, `HS384`, or `HS512`. |
 | `AppSettings__CorsOrigins` | `http://localhost:9600` | Allowed CORS origins |
 | `AppSettings__MaxRequestsPerDay` | `0` (unlimited) | Daily request cap per user |
 | `AppSettings__MaxFileSizeBytes` | `0` (unlimited) | Max upload size |
@@ -223,7 +234,7 @@ All settings via environment variables or `appsettings.json` (section `AppSettin
 ## Solution Structure
 
 ```
-netdocserve/
+file-api/
 ├── Aelena.FileApi.sln
 ├── Directory.Build.props          # net10.0, C# 14, nullable, TreatWarningsAsErrors
 ├── Directory.Packages.props       # Central Package Management: one pinned version per package
@@ -246,34 +257,50 @@ netdocserve/
 │   │       ├── Persistence/       # ShareRepository (SQLite/Dapper)
 │   │       └── Common/            # TextAnalysis, PageRangeParser, TextSearch, HashService,
 │   │                              # TxtService, ZipService, ReadabilityService, PiiService,
-│   │                              # EmailService, WebhookService
+│   │                              # EmailService, UserRegex
 │   │
-│   └── Aelena.FileApi.Api/       # HTTP wrapper (Minimal APIs)
-│       ├── Program.cs             # Top-level: DI, Serilog, OpenTelemetry, all routes
-│       ├── Endpoints/             # 22 endpoint files
-│       ├── Middleware/            # Exception, Audit, AuthRateLimit
-│       ├── Auth/                  # JwtCookieAuth
-│       └── Configuration/        # AppSettings
+│   ├── Aelena.FileApi.Api/       # HTTP wrapper (Minimal APIs)
+│   │   ├── Program.cs             # Top-level: DI, Serilog, OpenTelemetry, all routes
+│   │   ├── Endpoints/             # 22 endpoint files + FormFileExtensions
+│   │   ├── Middleware/            # Exception, Audit, AuthRateLimit
+│   │   ├── Logging/               # Source-generated LoggerMessage delegates
+│   │   ├── Auth/                  # JwtCookieAuth
+│   │   ├── Services/              # WebhookService
+│   │   └── Configuration/         # AppSettings
+│   │
+│   └── Aelena.FileApi.Cli/       # `fileapi` console app (System.CommandLine 2.0)
+│       ├── Commands/              # One file per command group
+│       └── Helpers/               # Output, ExitCode, CommandExtensions, Format
+│
+├── grpc/                          # gRPC port — its own solution, same Core
+│   ├── src/Aelena.FileApi.Grpc/
+│   └── tests/
 │
 └── tests/
-    ├── Aelena.FileApi.Tests/     # 157 unit tests (xUnit + FluentAssertions)
-    └── Aelena.FileApi.Api.Tests/ # 18 endpoint tests (WebApplicationFactory)
+    ├── Aelena.FileApi.Tests/     # 193 unit tests (xUnit + AwesomeAssertions)
+    └── Aelena.FileApi.Api.Tests/ # 97 endpoint, error-contract, auth, and share tests
 ```
 
 ## Tech Stack
 
 | Component | Library |
 |-----------|---------|
-| PDF | iText7 8.x (AGPL) |
+| PDF | iText7 9.x (AGPL) |
 | DOCX/PPTX | DocumentFormat.OpenXml 3.x |
 | Images | SixLabors.ImageSharp 3.x |
 | Email | MimeKit 4.x |
+| CLI | System.CommandLine 2.0 + Spectre.Console |
+| gRPC | Grpc.AspNetCore 2.x |
 | LLM | OpenAI-compatible HTTP client |
-| Templates | Scriban 5.x |
+| Templates | Scriban 7.x |
 | Tokens | SharpToken 2.x |
 | SQLite | Microsoft.Data.Sqlite + Dapper |
 | Logging | Serilog + OpenTelemetry |
-| Testing | xUnit + FluentAssertions + NSubstitute |
+| Testing | xUnit + AwesomeAssertions + NSubstitute |
+
+Package versions are pinned centrally in `Directory.Packages.props`. Nothing
+floats — `NuGetAudit` runs at `low` severity across the whole graph and fails
+the build on a known advisory.
 
 ## Deferred to Separate Projects
 
@@ -282,6 +309,13 @@ netdocserve/
 | `imagehash` | Separate NuGet | Perceptual hashing (aHash/pHash/dHash/wHash) |
 | `docling` | Separate project | IBM ML document parser — no .NET equivalent |
 | GDAL | Partial | Using NetTopologySuite + LibTiff.NET instead |
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md). The 0.3.0 entry documents the modernization
+pass: the .NET 10/11 retarget, and the bugs it turned up — including a redaction
+endpoint that returned unredacted documents and share links that ignored their
+own passwords and expiry.
 
 ## License
 

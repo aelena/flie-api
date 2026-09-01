@@ -1,0 +1,134 @@
+# Changelog
+
+All notable changes to this project are documented here.
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
+this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.3.0]
+
+A modernization pass over a codebase that had been sitting for six months.
+It did not build on checkout: floating version ranges (`5.*`, `8.*`) had drifted
+Scriban onto a release carrying a critical advisory, and `NuGetAudit` failed
+restore before a line of C# was read.
+
+### Security
+
+- **Share links ignored every restriction they recorded.** `GET /share/{token}`
+  looked the row up, bumped the access counter, and returned the report. It never
+  checked `expires_at`, never verified `password_hash`, and never consulted
+  `allowed_emails`. An expired link worked indefinitely and a password-protected
+  link opened for anyone holding the URL — the password was write-only. Expiry now
+  answers `410`, a missing or wrong password `401` (compared in fixed time), and a
+  link restricted to named recipients `403`.
+- **The JWT signing algorithm was unpinned.** Neither validation path passed
+  `ValidAlgorithms`, so the handler accepted whatever `alg` a token declared.
+  `AppSettings.JwtAlgorithm` existed to name the algorithm in use and was read by
+  nothing. It is now the single accepted algorithm, restricted to the HMAC family.
+- **The placeholder JWT secret would have shipped.** Anyone who has read this
+  repository could mint a valid session with it. Outside `Development` the
+  application now refuses to start while it is still in place, or while the secret
+  is too short to sign with.
+- **Caller-supplied regexes ran without a match timeout.** Both the pattern and the
+  text come from the caller, so `^(a+)+$` against a long run of `a`s pinned a
+  thread until the process died. Every caller pattern now carries a 2s timeout and
+  reports `400` when it expires.
+- Scriban `5.12.1` → `7.2.6`, clearing the advisory that broke restore.
+
+### Fixed — operations that silently did nothing
+
+- **`/pdf/redact` returned unredacted documents.** It counted matches, copied the
+  PDF through untouched, and returned it as `<name>_redacted.pdf` with a non-zero
+  redaction count and a `200`. Text the caller asked to have removed was still
+  selectable and extractable. Now `501`, matching the `/redact` endpoint that
+  already answered that way.
+- **`/pdf/extract-tables` always reported zero tables.** It opened the document,
+  ignored it, and returned an empty list with a `200` — indistinguishable from a
+  PDF that genuinely contains no tables. Now `501`, pointing at the text and
+  Markdown extractors that do work.
+- `CompressPdf` accepts `imageQuality` and `dpi` and applies neither. It does
+  genuinely compress (object streams and the cross-reference table), so it still
+  answers normally, but the limitation is documented on the method instead of
+  living in a `TODO`.
+
+### Fixed — error reporting
+
+- **Caller mistakes were reported as `500`.** Core signalled expected failures with
+  `ArgumentException`, `FormatException`, or whatever iText threw; only
+  `FileApiException` was mapped to a status code. A mistyped page range answered
+  `500 "An unexpected error occurred."` The CLI printed a raw stack trace for the
+  same reason. `ErrorContractTests` now pins ten of these against the real HTTP
+  surface.
+- **RFC 9457 responses were not `application/problem+json`.** `WriteProblem`
+  assigned `Response.ContentType` and then called `WriteAsJsonAsync`, which
+  overwrites it, so every error went out as `application/json` — defeating the one
+  thing the media type exists for.
+- `PageRangeParser`: out-of-bounds pages and malformed tokens now answer `400`
+  naming the problem; a reversed range like `8-5` is rejected instead of quietly
+  selecting nothing; a selection matching no page is rejected rather than returning
+  an empty document with a `200`.
+- Only `GetMetrics` handled an unreadable PDF; the other 23 entry points let
+  iText's exception escape. Both failure points now produce a `422` describing what
+  is wrong with the file, and a password-protected PDF says so everywhere.
+- `SearchEndpoints` told callers `query` and `pattern` could both be supplied,
+  then rejected exactly that.
+- An oversized upload answered `400` quoting `MAX_FILE_SIZE_BYTES`, a server
+  environment variable the caller cannot see. Now `413` with both sizes in MB.
+
+### Fixed — leaks, races, and resource use
+
+- `AuthRateLimitMiddleware` kept a static per-date bucket that was never evicted:
+  one permanent entry per day per caller, for the life of the process.
+- `AuditLogMiddleware` had no `try/finally` and sat inside the exception handler,
+  so no failing request was ever audited and rate-limited requests never reached
+  it — the entries anyone reading an audit log is looking for. It is now outermost
+  and logs in a `finally`.
+- `InMemoryJobStore` trimmed without synchronisation: two concurrent `Set` calls at
+  capacity each computed their own excess from a separate snapshot and could evict
+  jobs a caller was still polling for.
+- `ShareRepository` used double-checked locking on a non-volatile field, so a
+  second thread could take a connection the first had not finished opening.
+- Uploads were copied three times, through eleven duplicated
+  `CopyToAsync`-then-`ToArray` helpers, in a service built for large documents.
+  One shared reader sizes the buffer from `IFormFile.Length`, and threads the
+  request's cancellation token — which none of the copies did.
+- The composite file hash allocated a second copy of the whole file to concatenate
+  a prefix; it is now hashed incrementally.
+- `ZipService` caught failures from the `ZipArchive` constructor only, so an
+  archive with a good header and a damaged central directory escaped as a `500`.
+
+### Changed
+
+- **Retargeted to .NET 10 / C# 14**, and multi-targeted `net10.0;net11.0` — both
+  build and test green. `publish` and `run` need `-f`; see the README.
+- **Central Package Management** (`Directory.Packages.props`) with exact pins,
+  covering the `grpc/` minirepo from the same file. Floating ranges are how the
+  Scriban drift happened silently.
+- **CLI ported to System.CommandLine 2.0.** The pinned `2.0.0-beta4` dated from
+  2022 and its API is gone in the GA release. Along the way: `image resize -h 100`
+  never set a height (`-h` is bound to `--help`); failures now reach the user as
+  one line on stderr with a meaningful exit code; and a helper that called
+  `Environment.Exit(1)` was removed in favour of parser-level validation.
+- **FluentAssertions → AwesomeAssertions.** FluentAssertions 8 moved to a paid
+  licence for commercial use; this is the MIT-licensed community fork.
+- **Culture correctness.** Markdown export, ZIP CRCs, PDF page labels, and the
+  rate-limit bucket key were formatted in the ambient culture, so their output
+  changed shape with the machine. Those are pinned to invariant; CLI display is
+  explicitly current-culture.
+- **The `.editorconfig` made the build depend on the installed SDK.** Its legacy
+  `value:severity` syntax was not read by the newer analyzers, which fell back to
+  opposite defaults — installing the .NET 11 SDK turned a clean build into 550
+  style errors on unchanged code. Options and severities are now declared
+  separately.
+- Source-generated `LoggerMessage` delegates in the API layer; source-generated
+  regexes in `PiiService`; `ShareRepository` returns records instead of `dynamic`
+  (converting its two callers surfaced 16 previously runtime-only errors).
+- Language detection counted markers by scanning for `" the "` — a space either
+  side — which cannot see a marker opening the text, closing it, or against
+  punctuation or a newline. It now counts whole words.
+
+### Added
+
+- `ErrorContractTests`, `ShareAccessTests`, and `JwtCookieAuthTests` — the last
+  covering a component that had no tests at all, despite being the only thing
+  between a request and an identity.
+- Test count: **223 → 298**, run against both target frameworks.
