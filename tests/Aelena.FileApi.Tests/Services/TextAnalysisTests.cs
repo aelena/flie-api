@@ -54,4 +54,62 @@ public class TextAnalysisTests
         var text = "El rápido zorro marrón salta sobre el perro perezoso y el gato está sentado en la alfombra.";
         TextAnalysis.DetectLanguage(text).Should().Be("es");
     }
+
+    // ── Marker words at the edges ────────────────────────────────────────
+    //
+    // Detection counts whole words now, where it previously scanned for the substring
+    // " the " — a space on either side. That scan could not see a marker opening the
+    // text, closing it, or sitting against punctuation or a newline, so its scores
+    // were badly understated even when the winner happened to come out right. These
+    // put the markers in exactly those positions and pin the counting behaviour, so
+    // the rewrite cannot regress it.
+
+    [Fact]
+    public void DetectLanguage_MarkersAtStartAndEnd_AreCounted()
+    {
+        TextAnalysis.DetectLanguage("The document is complete and correct to the letter")
+            .Should().Be("en");
+    }
+
+    [Fact]
+    public void DetectLanguage_MarkersAgainstPunctuation_AreCounted()
+    {
+        TextAnalysis.DetectLanguage("Ready? The report is done, and the summary is of use.")
+            .Should().Be("en");
+    }
+
+    [Fact]
+    public void DetectLanguage_MarkersAcrossNewlines_AreCounted()
+    {
+        TextAnalysis.DetectLanguage(
+            """
+            The heading
+            and the body
+            is the point
+            of the document
+            """)
+            .Should().Be("en");
+    }
+
+    [Fact]
+    public void DetectLanguage_IsCaseInsensitive()
+    {
+        TextAnalysis.DetectLanguage("THE DOCUMENT IS COMPLETE AND CORRECT TO THE LETTER")
+            .Should().Be("en");
+    }
+
+    [Fact]
+    public void DetectLanguage_NoRecognisedMarkers_ReturnsNull() =>
+        TextAnalysis.DetectLanguage("zzzz yyyy xxxx wwww vvvv uuuu tttt ssss rrrr")
+            .Should().BeNull();
+
+    [Fact]
+    public void DetectLanguage_DistinguishesFrenchFromEnglish() =>
+        TextAnalysis.DetectLanguage("Le document est une copie des originaux, et les pages est claire")
+            .Should().Be("fr");
+
+    [Fact]
+    public void DetectLanguage_DistinguishesGermanFromEnglish() =>
+        TextAnalysis.DetectLanguage("Der Bericht und die Zusammenfassung ist das Ergebnis der Arbeit")
+            .Should().Be("de");
 }

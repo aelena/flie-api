@@ -9,65 +9,58 @@ public static class DocxEndpoints
 
     public static RouteGroupBuilder MapDocxEndpoints(this RouteGroupBuilder group)
     {
-        group.MapPost("/metrics", async (IFormFile file) =>
-            Results.Ok(DocxService.GetMetrics(await Read(file), file.FileName))
+        group.MapPost("/metrics", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
+            Results.Ok(DocxService.GetMetrics(await file.ReadAllBytesAsync(ctx, ct), file.FileName))
         ).WithName("DocxMetrics").DisableAntiforgery().Produces<DocxMetrics>(200);
 
-        group.MapPost("/extract-pages", async (IFormFile file, string pages) =>
-            Results.Ok(DocxService.ExtractPages(await Read(file), file.FileName, pages))
+        group.MapPost("/extract-pages", async (IFormFile file, string pages, HttpContext ctx, CancellationToken ct) =>
+            Results.Ok(DocxService.ExtractPages(await file.ReadAllBytesAsync(ctx, ct), file.FileName, pages))
         ).WithName("DocxExtractPages").DisableAntiforgery().Produces<ExtractionResponse>(200);
 
-        group.MapPost("/metadata", async (IFormFile file) =>
-            Results.Ok(DocxService.GetMetadata(await Read(file), file.FileName))
+        group.MapPost("/metadata", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
+            Results.Ok(DocxService.GetMetadata(await file.ReadAllBytesAsync(ctx, ct), file.FileName))
         ).WithName("DocxMetadata").DisableAntiforgery().Produces<DocxMetadataResponse>(200);
 
-        group.MapPost("/extract-markdown", async (IFormFile file) =>
-            Results.Ok(DocxService.ExtractToMarkdown(await Read(file), file.FileName))
+        group.MapPost("/extract-markdown", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
+            Results.Ok(DocxService.ExtractToMarkdown(await file.ReadAllBytesAsync(ctx, ct), file.FileName))
         ).WithName("DocxExtractMarkdown").DisableAntiforgery().Produces<DocxMarkdownResponse>(200);
 
-        group.MapPost("/health", async (IFormFile file) =>
-            Results.Ok(DocxService.HealthCheck(await Read(file), file.FileName))
+        group.MapPost("/health", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
+            Results.Ok(DocxService.HealthCheck(await file.ReadAllBytesAsync(ctx, ct), file.FileName))
         ).WithName("DocxHealth").DisableAntiforgery().Produces<DocxHealthResponse>(200);
 
-        group.MapPost("/search", async (IFormFile file, string? query, string? pattern) =>
+        group.MapPost("/search", async (IFormFile file, string? query, string? pattern, HttpContext ctx, CancellationToken ct) =>
         {
-            var (name, matches) = DocxService.Search(await Read(file), file.FileName, query, pattern);
+            var (name, matches) = DocxService.Search(await file.ReadAllBytesAsync(ctx, ct), file.FileName, query, pattern);
             return Results.Ok(new SearchResponse(name, matches.Count, matches));
         }).WithName("DocxSearch").DisableAntiforgery().Produces<SearchResponse>(200);
 
-        group.MapPost("/remove-metadata", async (IFormFile file) =>
+        group.MapPost("/remove-metadata", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var (name, bytes) = DocxService.RemoveMetadata(await Read(file), file.FileName);
+            var (name, bytes) = DocxService.RemoveMetadata(await file.ReadAllBytesAsync(ctx, ct), file.FileName);
             return Results.File(bytes, DocxMime, name);
         }).WithName("DocxRemoveMetadata").DisableAntiforgery();
 
-        group.MapPost("/convert-pdf", async (IFormFile file) =>
+        group.MapPost("/convert-pdf", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var (name, bytes) = DocxService.ConvertToPdf(await Read(file), file.FileName);
+            var (name, bytes) = DocxService.ConvertToPdf(await file.ReadAllBytesAsync(ctx, ct), file.FileName);
             return Results.File(bytes, "application/pdf", name);
         }).WithName("DocxConvertPdf").DisableAntiforgery();
 
         group.MapPost("/watermark", async (IFormFile file, string text,
-            string? color, int? fontSize, int? angle) =>
+            string? color, int? fontSize, int? angle, HttpContext ctx, CancellationToken ct) =>
         {
-            var (name, bytes) = DocxService.AddWatermark(await Read(file), file.FileName,
+            var (name, bytes) = DocxService.AddWatermark(await file.ReadAllBytesAsync(ctx, ct), file.FileName,
                 text, color ?? "silver", fontSize ?? 72, angle ?? -45);
             return Results.File(bytes, DocxMime, name);
         }).WithName("DocxWatermark").DisableAntiforgery();
 
-        group.MapPost("/remove-watermark", async (IFormFile file) =>
+        group.MapPost("/remove-watermark", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var (name, bytes) = DocxService.RemoveWatermark(await Read(file), file.FileName);
+            var (name, bytes) = DocxService.RemoveWatermark(await file.ReadAllBytesAsync(ctx, ct), file.FileName);
             return Results.File(bytes, DocxMime, name);
         }).WithName("DocxRemoveWatermark").DisableAntiforgery();
 
         return group;
-    }
-
-    private static async Task<byte[]> Read(IFormFile file)
-    {
-        await using var ms = new MemoryStream();
-        await file.CopyToAsync(ms);
-        return ms.ToArray();
     }
 }

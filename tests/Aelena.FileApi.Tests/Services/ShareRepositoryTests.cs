@@ -21,9 +21,10 @@ public sealed class ShareRepositoryTests : IDisposable
         _repo.Create("tok1", "job1", """{"status":"ok"}""", "anyone", null, null, null);
 
         var row = _repo.GetByToken("tok1")!;
-        ((string)row.token).Should().Be("tok1");
-        ((string)row.job_id).Should().Be("job1");
-        ((string)row.access_type).Should().Be("anyone");
+        row.Token.Should().Be("tok1");
+        row.JobId.Should().Be("job1");
+        row.AccessType.Should().Be("anyone");
+        row.Report.Should().Be("""{"status":"ok"}""");
     }
 
     [Fact]
@@ -40,7 +41,7 @@ public sealed class ShareRepositoryTests : IDisposable
         _repo.IncrementAccessCount("tok1");
 
         var row = _repo.GetByToken("tok1")!;
-        ((long)row.access_count).Should().Be(2);
+        row.AccessCount.Should().Be(2);
     }
 
     [Fact]
@@ -74,8 +75,48 @@ public sealed class ShareRepositoryTests : IDisposable
         _repo.Create("tok1", "job1", "{}", "anyone", null, "hashed_pw", "2030-01-01T00:00:00Z");
 
         var row = _repo.GetByToken("tok1")!;
-        ((string)row.password_hash).Should().Be("hashed_pw");
-        ((string)row.expires_at).Should().Be("2030-01-01T00:00:00Z");
+        row.PasswordHash.Should().Be("hashed_pw");
+        row.ExpiresAt.Should().Be("2030-01-01T00:00:00Z");
+        row.IsExpired.Should().BeFalse();
+    }
+
+    // ── Expiry ───────────────────────────────────────────────────────────
+    //
+    // expires_at was stored at creation and never consulted again, so an expired
+    // link kept serving its report indefinitely.
+
+    [Fact]
+    public void IsExpired_PastExpiry_IsTrue()
+    {
+        var past = DateTimeOffset.UtcNow.AddDays(-1).ToString("o");
+        _repo.Create("tok1", "job1", "{}", "anyone", null, null, past);
+
+        _repo.GetByToken("tok1")!.IsExpired.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsExpired_NoExpiry_IsFalse()
+    {
+        _repo.Create("tok1", "job1", "{}", "anyone", null, null, null);
+
+        _repo.GetByToken("tok1")!.IsExpired.Should().BeFalse();
+    }
+
+    [Fact]
+    public void DeleteExpired_RemovesOnlyThePastOnes()
+    {
+        var past = DateTimeOffset.UtcNow.AddDays(-1).ToString("o");
+        var future = DateTimeOffset.UtcNow.AddDays(1).ToString("o");
+
+        _repo.Create("expired", "job1", "{}", "anyone", null, null, past);
+        _repo.Create("live", "job1", "{}", "anyone", null, null, future);
+        _repo.Create("forever", "job1", "{}", "anyone", null, null, null);
+
+        _repo.DeleteExpired().Should().Be(1);
+
+        _repo.GetByToken("expired").Should().BeNull();
+        _repo.GetByToken("live").Should().NotBeNull();
+        _repo.GetByToken("forever").Should().NotBeNull();
     }
 
     public void Dispose()

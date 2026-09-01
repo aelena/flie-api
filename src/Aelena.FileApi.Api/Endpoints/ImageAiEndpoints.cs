@@ -9,36 +9,36 @@ public static class ImageAiEndpoints
     {
         // ── Local operations (ImageSharp) ────────────────────────────────
 
-        group.MapPost("/auto-orient", async (IFormFile file) =>
+        group.MapPost("/auto-orient", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var (n, d, m) = ImageService.AutoOrient(await Read(file), file.FileName);
+            var (n, d, m) = ImageService.AutoOrient(await file.ReadAllBytesAsync(ctx, ct), file.FileName);
             return Results.File(d, m, n);
         }).WithName("ImageAiAutoOrient").DisableAntiforgery();
 
-        group.MapPost("/edge-detect", async (IFormFile file) =>
+        group.MapPost("/edge-detect", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var (n, d, m) = ImageService.EdgeDetect(await Read(file), file.FileName);
+            var (n, d, m) = ImageService.EdgeDetect(await file.ReadAllBytesAsync(ctx, ct), file.FileName);
             return Results.File(d, m, n);
         }).WithName("ImageAiEdgeDetect").DisableAntiforgery();
 
-        group.MapPost("/equalize", async (IFormFile file) =>
+        group.MapPost("/equalize", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var (n, d, m) = ImageService.Equalize(await Read(file), file.FileName);
+            var (n, d, m) = ImageService.Equalize(await file.ReadAllBytesAsync(ctx, ct), file.FileName);
             return Results.File(d, m, n);
         }).WithName("ImageAiEqualize").DisableAntiforgery();
 
-        group.MapPost("/invert", async (IFormFile file) =>
+        group.MapPost("/invert", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var (n, d, m) = ImageService.Invert(await Read(file), file.FileName);
+            var (n, d, m) = ImageService.Invert(await file.ReadAllBytesAsync(ctx, ct), file.FileName);
             return Results.File(d, m, n);
         }).WithName("ImageAiInvert").DisableAntiforgery();
 
-        group.MapPost("/color-palette", async (IFormFile file, int? numColors) =>
-            Results.Ok(ImageService.ExtractColorPalette(await Read(file), file.FileName, numColors ?? 8))
+        group.MapPost("/color-palette", async (IFormFile file, int? numColors, HttpContext ctx, CancellationToken ct) =>
+            Results.Ok(ImageService.ExtractColorPalette(await file.ReadAllBytesAsync(ctx, ct), file.FileName, numColors ?? 8))
         ).WithName("ImageAiColorPalette").DisableAntiforgery();
 
-        group.MapPost("/base64", async (IFormFile file) =>
-            Results.Ok(ImageService.ToBase64(await Read(file), file.FileName))
+        group.MapPost("/base64", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
+            Results.Ok(ImageService.ToBase64(await file.ReadAllBytesAsync(ctx, ct), file.FileName))
         ).WithName("ImageAiBase64").DisableAntiforgery();
 
         // ── Stubs for operations requiring external dependencies ─────────
@@ -68,11 +68,4 @@ public static class ImageAiEndpoints
 
     private static void Stub(RouteGroupBuilder group, string path, string name, string message) =>
         group.MapPost(path, () => ThrowStub(message)).WithName(name).DisableAntiforgery();
-
-    private static async Task<byte[]> Read(IFormFile file)
-    {
-        await using var ms = new MemoryStream();
-        await file.CopyToAsync(ms);
-        return ms.ToArray();
-    }
 }

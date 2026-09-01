@@ -7,11 +7,9 @@ public static class ZipEndpoints
 {
     public static RouteGroupBuilder MapZipEndpoints(this RouteGroupBuilder group)
     {
-        group.MapPost("/inspect", async (IFormFile file) =>
+        group.MapPost("/inspect", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            await using var ms = new MemoryStream();
-            await file.CopyToAsync(ms);
-            return Results.Ok(ZipService.Inspect(ms.ToArray(), file.FileName));
+            return Results.Ok(ZipService.Inspect(await file.ReadAllBytesAsync(ctx, ct), file.FileName));
         })
         .WithName("ZipInspect")
         .WithDescription("List all entries inside a ZIP archive with sizes, compression, and CRC-32.")

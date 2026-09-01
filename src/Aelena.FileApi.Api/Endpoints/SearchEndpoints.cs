@@ -8,11 +8,10 @@ public static class SearchEndpoints
 {
     public static RouteGroupBuilder MapSearchEndpoints(this RouteGroupBuilder group)
     {
-        group.MapPost("", async (IFormFile file, string? query, string? pattern) =>
+        group.MapPost("", async (IFormFile file, string? query, string? pattern,
+            HttpContext ctx, CancellationToken ct) =>
         {
-            await using var ms = new MemoryStream();
-            await file.CopyToAsync(ms);
-            var data = ms.ToArray();
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var fileName = file.FileName;
             var ext = Path.GetExtension(fileName).TrimStart('.').ToLowerInvariant();
 

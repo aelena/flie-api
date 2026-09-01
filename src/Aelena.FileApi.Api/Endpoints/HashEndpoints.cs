@@ -7,11 +7,9 @@ public static class HashEndpoints
 {
     public static RouteGroupBuilder MapHashEndpoints(this RouteGroupBuilder group)
     {
-        group.MapPost("", async (IFormFile file) =>
+        group.MapPost("", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            await using var ms = new MemoryStream();
-            await file.CopyToAsync(ms);
-            var data = ms.ToArray();
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             return Results.Ok(HashService.ComputeHash(data, file.FileName, file.ContentType));
         })
         .WithName("FileHash")

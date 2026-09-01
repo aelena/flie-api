@@ -11,6 +11,7 @@ namespace Aelena.FileApi.Core.Services.Jobs;
 public sealed class InMemoryJobStore<T> where T : class
 {
     private readonly ConcurrentDictionary<string, (T Value, DateTimeOffset Created)> _store = new();
+    private readonly Lock _trimGate = new();
     private readonly int _maxItems;
 
     /// <summary>
@@ -23,6 +24,9 @@ public sealed class InMemoryJobStore<T> where T : class
     /// <summary>Store or update a job.</summary>
     public void Set(string jobId, T value)
     {
+        ArgumentException.ThrowIfNullOrEmpty(jobId);
+        ArgumentNullException.ThrowIfNull(value);
+
         _store[jobId] = (value, DateTimeOffset.UtcNow);
         TrimIfNeeded();
     }
@@ -40,19 +44,30 @@ public sealed class InMemoryJobStore<T> where T : class
     /// <summary>Current number of stored jobs.</summary>
     public int Count => _store.Count;
 
+    /// <summary>Drop the oldest entries until the store is back within capacity.</summary>
+    /// <remarks>
+    /// The trim runs under a lock. Unsynchronised, two concurrent <see cref="Set"/>
+    /// calls at capacity each computed their own excess from a snapshot and removed
+    /// that many entries, so the store could drop well below the limit and discard
+    /// jobs a caller was still waiting on. The dictionary itself stays lock-free;
+    /// only the eviction decision is serialised, and only when over capacity.
+    /// </remarks>
     private void TrimIfNeeded()
     {
         if (_maxItems <= 0 || _store.Count <= _maxItems) return;
 
-        // Remove oldest entries to get back under the limit
-        var excess = _store.Count - _maxItems;
-        var oldest = _store
-            .OrderBy(kv => kv.Value.Created)
-            .Take(excess)
-            .Select(kv => kv.Key)
-            .ToList();
+        lock (_trimGate)
+        {
+            var excess = _store.Count - _maxItems;
+            if (excess <= 0) return;
 
-        foreach (var key in oldest)
-            _store.TryRemove(key, out _);
+            var oldest = _store
+                .OrderBy(kv => kv.Value.Created)
+                .Take(excess)
+                .Select(kv => kv.Key);
+
+            foreach (var key in oldest)
+                _store.TryRemove(key, out _);
+        }
     }
 }

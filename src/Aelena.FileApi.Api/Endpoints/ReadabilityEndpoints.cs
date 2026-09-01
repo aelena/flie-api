@@ -8,11 +8,9 @@ public static class ReadabilityEndpoints
 {
     public static RouteGroupBuilder MapReadabilityEndpoints(this RouteGroupBuilder group)
     {
-        group.MapPost("", async (IFormFile file, string? language) =>
+        group.MapPost("", async (IFormFile file, string? language, HttpContext ctx, CancellationToken ct) =>
         {
-            await using var ms = new MemoryStream();
-            await file.CopyToAsync(ms);
-            var text = Encoding.UTF8.GetString(ms.ToArray());
+            var text = Encoding.UTF8.GetString(await file.ReadAllBytesAsync(ctx, ct));
 
             if (string.IsNullOrWhiteSpace(text))
                 throw new FileApiException(400, "Document contains no extractable text");

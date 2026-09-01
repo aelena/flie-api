@@ -1,25 +1,42 @@
+using System.Collections.Frozen;
 using SharpToken;
 
 namespace Aelena.FileApi.Core.Services.Common;
 
 /// <summary>
 /// Text analysis utilities: token counting, word/character counts, and language detection.
-/// Stateless and thread-safe — designed for use as a singleton service.
+/// Stateless and thread-safe — every member is static.
 /// </summary>
-public sealed class TextAnalysis
+public static class TextAnalysis
 {
-    private static readonly GptEncoding Encoding = GptEncoding.GetEncoding("cl100k_base");
+    private static readonly GptEncoding DefaultEncoding = GptEncoding.GetEncoding("cl100k_base");
+
+    /// <summary>Shortest text worth guessing a language for.</summary>
+    private const int MinimumLengthForDetection = 20;
+
+    /// <summary>
+    /// Function words whose frequency distinguishes the supported languages.
+    /// </summary>
+    /// <remarks>
+    /// Ordered so that the first language wins a tie deterministically, rather than
+    /// depending on dictionary enumeration order.
+    /// </remarks>
+    private static readonly FrozenDictionary<string, string[]> LanguageMarkers =
+        new Dictionary<string, string[]>
+        {
+            ["en"] = ["the", "and", "is", "of", "to"],
+            ["es"] = ["el", "de", "la", "en", "que", "los"],
+            ["fr"] = ["le", "les", "des", "est", "une"],
+            ["de"] = ["der", "die", "und", "das", "ist"],
+        }.ToFrozenDictionary();
 
     /// <summary>Count tokens using the cl100k_base encoding (GPT-4 / GPT-3.5-turbo compatible).</summary>
     public static int CountTokens(string text) =>
-        Encoding.Encode(text).Count;
+        DefaultEncoding.Encode(text).Count;
 
     /// <summary>Count tokens using a specific encoding model name.</summary>
-    public static int CountTokens(string text, string model)
-    {
-        var enc = GptEncoding.GetEncoding(model);
-        return enc.Encode(text).Count;
-    }
+    public static int CountTokens(string text, string model) =>
+        GptEncoding.GetEncoding(model).Encode(text).Count;
 
     /// <summary>Count whitespace-delimited words.</summary>
     public static int CountWords(string text) =>
@@ -30,50 +47,58 @@ public sealed class TextAnalysis
 
     /// <summary>
     /// Detect the dominant language of the text.
-    /// Returns an ISO 639-1 code (e.g. "en", "es", "fr") or <c>null</c>
-    /// if detection fails or the text is too short (less than 20 characters).
+    /// Returns an ISO 639-1 code (<c>en</c>, <c>es</c>, <c>fr</c>, <c>de</c>) or <c>null</c>
+    /// if detection fails or the text is shorter than 20 characters.
     /// </summary>
     /// <remarks>
-    /// Uses a simple trigram-based heuristic. For production use with higher accuracy,
-    /// consider integrating NTextCat or a dedicated language detection library.
+    /// A function-word frequency heuristic. It is deliberately crude; for higher
+    /// accuracy, integrate NTextCat or a dedicated language identification library.
     /// </remarks>
     public static string? DetectLanguage(string text)
     {
-        if (string.IsNullOrWhiteSpace(text) || text.Trim().Length < 20)
+        if (string.IsNullOrWhiteSpace(text) || text.Trim().Length < MinimumLengthForDetection)
             return null;
 
-        // Simple heuristic based on common word frequency.
-        // This is a placeholder — Phase 1+ will integrate NTextCat for proper detection.
-        var lower = text.ToLowerInvariant();
-        var scores = new Dictionary<string, int>
-        {
-            ["en"] = CountOccurrences(lower, " the ") + CountOccurrences(lower, " and ") +
-                     CountOccurrences(lower, " is ") + CountOccurrences(lower, " of ") +
-                     CountOccurrences(lower, " to "),
-            ["es"] = CountOccurrences(lower, " el ") + CountOccurrences(lower, " de ") +
-                     CountOccurrences(lower, " la ") + CountOccurrences(lower, " en ") +
-                     CountOccurrences(lower, " que ") + CountOccurrences(lower, " los "),
-            ["fr"] = CountOccurrences(lower, " le ") + CountOccurrences(lower, " les ") +
-                     CountOccurrences(lower, " des ") + CountOccurrences(lower, " est ") +
-                     CountOccurrences(lower, " une "),
-            ["de"] = CountOccurrences(lower, " der ") + CountOccurrences(lower, " die ") +
-                     CountOccurrences(lower, " und ") + CountOccurrences(lower, " das ") +
-                     CountOccurrences(lower, " ist ")
-        };
+        var words = Tokenize(text);
+        if (words.Count == 0) return null;
 
-        var best = scores.MaxBy(kv => kv.Value);
-        return best.Value > 0 ? best.Key : null;
+        string? best = null;
+        var bestScore = 0;
+
+        foreach (var (language, markers) in LanguageMarkers)
+        {
+            var score = markers.Sum(marker => words.GetValueOrDefault(marker));
+            if (score > bestScore)
+            {
+                (best, bestScore) = (language, score);
+            }
+        }
+
+        return best;
     }
 
-    private static int CountOccurrences(string text, string pattern)
+    /// <summary>Count lowercased word occurrences.</summary>
+    /// <remarks>
+    /// This replaces a substring scan for <c>" the "</c> and friends, which required a
+    /// space on both sides and so missed every marker that opened the text, ended it,
+    /// or sat against a newline or punctuation — exactly the positions function words
+    /// occupy most often. Those misses understated every score; because the winner is
+    /// whichever language scores highest, they mattered most where two languages were
+    /// close, which is precisely where the heuristic is weakest to begin with.
+    /// </remarks>
+    private static Dictionary<string, int> Tokenize(string text)
     {
-        var count = 0;
-        var idx = 0;
-        while ((idx = text.IndexOf(pattern, idx, StringComparison.Ordinal)) != -1)
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var range in text.AsSpan().SplitAny(" \t\r\n.,;:!?()[]{}\"'"))
         {
-            count++;
-            idx += pattern.Length;
+            var word = text.AsSpan()[range].Trim();
+            if (word.IsEmpty) continue;
+
+            var key = word.ToString();
+            counts[key] = counts.GetValueOrDefault(key) + 1;
         }
-        return count;
+
+        return counts;
     }
 }

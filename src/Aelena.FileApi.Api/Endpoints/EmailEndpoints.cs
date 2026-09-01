@@ -7,11 +7,9 @@ public static class EmailEndpoints
 {
     public static RouteGroupBuilder MapEmailEndpoints(this RouteGroupBuilder group)
     {
-        group.MapPost("/parse", async (IFormFile file, bool? summarize) =>
+        group.MapPost("/parse", async (IFormFile file, bool? summarize, HttpContext ctx, CancellationToken ct) =>
         {
-            await using var ms = new MemoryStream();
-            await file.CopyToAsync(ms);
-            var result = EmailService.Parse(ms.ToArray(), file.FileName);
+            var result = EmailService.Parse(await file.ReadAllBytesAsync(ctx, ct), file.FileName);
 
             // LLM-based summarization deferred to Phase 6
             if (summarize == true)

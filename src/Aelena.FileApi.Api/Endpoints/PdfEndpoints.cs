@@ -9,185 +9,183 @@ public static class PdfEndpoints
     {
         // ── Read Operations ──────────────────────────────────────────────
 
-        group.MapPost("/metrics", async (IFormFile file) =>
+        group.MapPost("/metrics", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             return Results.Ok(PdfService.GetMetrics(data, file.FileName));
         }).WithName("PdfMetrics").DisableAntiforgery().Produces<PdfMetrics>(200);
 
-        group.MapPost("/metadata", async (IFormFile file) =>
+        group.MapPost("/metadata", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             return Results.Ok(PdfService.GetMetadata(data, file.FileName));
         }).WithName("PdfMetadata").DisableAntiforgery().Produces<PdfMetadataResponse>(200);
 
-        group.MapPost("/form-fields", async (IFormFile file) =>
+        group.MapPost("/form-fields", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             return Results.Ok(PdfService.ExtractFormFields(data, file.FileName));
         }).WithName("PdfFormFields").DisableAntiforgery().Produces<FormFieldsResponse>(200);
 
-        group.MapPost("/health", async (IFormFile file) =>
+        group.MapPost("/health", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             return Results.Ok(PdfService.HealthCheck(data, file.FileName));
         }).WithName("PdfHealth").DisableAntiforgery().Produces<PdfHealthResponse>(200);
 
-        group.MapPost("/extract-text", async (IFormFile file, string? pages) =>
+        group.MapPost("/extract-text", async (IFormFile file, string? pages, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             return Results.Ok(PdfService.ExtractText(data, file.FileName, pages));
         }).WithName("PdfExtractText").DisableAntiforgery().Produces<PdfTextResponse>(200);
 
-        group.MapPost("/extract-pages", async (IFormFile file, string pages) =>
+        group.MapPost("/extract-pages", async (IFormFile file, string pages, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             return Results.Ok(PdfService.ExtractPages(data, file.FileName, pages));
         }).WithName("PdfExtractPages").DisableAntiforgery().Produces<ExtractionResponse>(200);
 
-        group.MapPost("/extract-markdown", async (IFormFile file, string? pages) =>
+        group.MapPost("/extract-markdown", async (IFormFile file, string? pages, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             return Results.Ok(PdfService.ExtractToMarkdown(data, file.FileName, pages));
         }).WithName("PdfExtractMarkdown").DisableAntiforgery().Produces<MarkdownResponse>(200);
 
-        group.MapPost("/extract-tables", async (IFormFile file, string? pages) =>
+        group.MapPost("/extract-tables", async (IFormFile file, string? pages, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             return Results.Ok(PdfService.ExtractTables(data, file.FileName, pages));
         }).WithName("PdfExtractTables").DisableAntiforgery().Produces<PdfTableResponse>(200);
 
-        group.MapPost("/search", async (IFormFile file, string? query, string? pattern) =>
+        group.MapPost("/search", async (IFormFile file, string? query, string? pattern, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (fileName, matches) = PdfService.Search(data, file.FileName, query, pattern);
             return Results.Ok(new SearchResponse(fileName, matches.Count, matches));
         }).WithName("PdfSearch").DisableAntiforgery().Produces<SearchResponse>(200);
 
-        group.MapPost("/extract-annotations", async (IFormFile file) =>
+        group.MapPost("/extract-annotations", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             return Results.Ok(PdfService.ExtractAnnotations(data, file.FileName));
         }).WithName("PdfExtractAnnotations").DisableAntiforgery();
 
-        group.MapPost("/extract-bookmarks", async (IFormFile file) =>
+        group.MapPost("/extract-bookmarks", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             return Results.Ok(PdfService.ExtractBookmarks(data, file.FileName));
         }).WithName("PdfExtractBookmarks").DisableAntiforgery();
 
-        group.MapPost("/extract-form-data", async (IFormFile file) =>
+        group.MapPost("/extract-form-data", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             return Results.Ok(PdfService.ExtractFormFields(data, file.FileName));
         }).WithName("PdfExtractFormData").DisableAntiforgery();
 
         // ── Write Operations ─────────────────────────────────────────────
 
-        group.MapPost("/merge", async (IFormFileCollection files) =>
+        group.MapPost("/merge", async (IFormFileCollection files, CancellationToken ct) =>
         {
-            var pdfFiles = new List<(byte[] Data, string Name)>();
+            var pdfFiles = new List<(byte[] Data, string Name)>(files.Count);
             foreach (var f in files)
-            {
-                var d = await ReadFile(f);
-                pdfFiles.Add((d, f.FileName));
-            }
+                pdfFiles.Add((await f.ReadAllBytesAsync(ct), f.FileName));
+
             var (name, bytes) = PdfService.MergePdfs(pdfFiles);
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfMerge").DisableAntiforgery();
 
-        group.MapPost("/split", async (IFormFile file, string ranges) =>
+        group.MapPost("/split", async (IFormFile file, string ranges, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, zipBytes) = PdfService.SplitPdf(data, file.FileName, ranges);
             return Results.File(zipBytes, "application/zip", name);
         }).WithName("PdfSplit").DisableAntiforgery();
 
-        group.MapPost("/rotate", async (IFormFile file, int angle, string? pages) =>
+        group.MapPost("/rotate", async (IFormFile file, int angle, string? pages, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, bytes) = PdfService.RotatePages(data, file.FileName, angle, pages);
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfRotate").DisableAntiforgery();
 
-        group.MapPost("/reorder", async (IFormFile file, string order) =>
+        group.MapPost("/reorder", async (IFormFile file, string order, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, bytes) = PdfService.ReorderPages(data, file.FileName, order);
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfReorder").DisableAntiforgery();
 
-        group.MapPost("/delete-pages", async (IFormFile file, string pages) =>
+        group.MapPost("/delete-pages", async (IFormFile file, string pages, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, bytes) = PdfService.DeletePages(data, file.FileName, pages);
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfDeletePages").DisableAntiforgery();
 
         group.MapPost("/watermark", async (IFormFile file, string text,
-            string? color, float? opacity, int? fontSize, int? angle, string? position) =>
+            string? color, float? opacity, int? fontSize, int? angle, string? position, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, bytes) = PdfService.AddWatermark(data, file.FileName, text,
                 color ?? "gray", opacity ?? 0.3f, fontSize ?? 60, angle ?? 45, position ?? "center");
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfWatermark").DisableAntiforgery();
 
-        group.MapPost("/remove-metadata", async (IFormFile file) =>
+        group.MapPost("/remove-metadata", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, bytes) = PdfService.RemoveMetadata(data, file.FileName);
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfRemoveMetadata").DisableAntiforgery();
 
-        group.MapPost("/encrypt", async (IFormFile file, string userPassword, string? ownerPassword) =>
+        group.MapPost("/encrypt", async (IFormFile file, string userPassword, string? ownerPassword, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, bytes) = PdfService.EncryptPdf(data, file.FileName, userPassword, ownerPassword);
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfEncrypt").DisableAntiforgery();
 
-        group.MapPost("/decrypt", async (IFormFile file, string password) =>
+        group.MapPost("/decrypt", async (IFormFile file, string password, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, bytes) = PdfService.DecryptPdf(data, file.FileName, password);
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfDecrypt").DisableAntiforgery();
 
-        group.MapPost("/compress", async (IFormFile file, int? imageQuality, int? dpi) =>
+        group.MapPost("/compress", async (IFormFile file, int? imageQuality, int? dpi, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, bytes, origSize, compSize) = PdfService.CompressPdf(data, file.FileName, imageQuality ?? 80, dpi ?? 150);
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfCompress").DisableAntiforgery();
 
-        group.MapPost("/insert-blank-pages", async (IFormFile file, string after, int? count) =>
+        group.MapPost("/insert-blank-pages", async (IFormFile file, string after, int? count, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, bytes) = PdfService.InsertBlankPages(data, file.FileName, after, count ?? 1);
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfInsertBlankPages").DisableAntiforgery();
 
         group.MapPost("/page-numbers", async (IFormFile file, string? position, int? fontSize,
-            int? start, int? margin, string? fontColor, string? fmt) =>
+            int? start, int? margin, string? fontColor, string? fmt, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, bytes) = PdfService.AddPageNumbers(data, file.FileName,
                 position ?? "bottom-center", fontSize ?? 12, start ?? 1,
                 margin ?? 36, fontColor ?? "black", fmt ?? "{n}");
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfPageNumbers").DisableAntiforgery();
 
-        group.MapPost("/unlock", async (IFormFile file) =>
+        group.MapPost("/unlock", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, bytes) = PdfService.UnlockPdf(data, file.FileName);
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfUnlock").DisableAntiforgery();
 
-        group.MapPost("/redact", async (IFormFile file, string terms, string? regex, string? pages, string? replacement) =>
+        group.MapPost("/redact", async (IFormFile file, string terms, string? regex, string? pages, string? replacement, HttpContext ctx, CancellationToken ct) =>
         {
-            var data = await ReadFile(file);
+            var data = await file.ReadAllBytesAsync(ctx, ct);
             var (name, bytes, count) = PdfService.RedactText(data, file.FileName, terms, regex, pages, replacement);
             return Results.File(bytes, "application/pdf", name);
         }).WithName("PdfRedact").DisableAntiforgery();
@@ -230,11 +228,4 @@ public static class PdfEndpoints
 
     private static IResult Stub501(string message) =>
         throw new FileApiException(501, message);
-
-    private static async Task<byte[]> ReadFile(IFormFile file)
-    {
-        await using var ms = new MemoryStream();
-        await file.CopyToAsync(ms);
-        return ms.ToArray();
-    }
 }

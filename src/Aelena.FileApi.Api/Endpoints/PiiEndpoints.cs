@@ -8,11 +8,9 @@ public static class PiiEndpoints
 {
     public static RouteGroupBuilder MapPiiEndpoints(this RouteGroupBuilder group)
     {
-        group.MapPost("/detect", async (IFormFile file) =>
+        group.MapPost("/detect", async (IFormFile file, HttpContext ctx, CancellationToken ct) =>
         {
-            await using var ms = new MemoryStream();
-            await file.CopyToAsync(ms);
-            var text = Encoding.UTF8.GetString(ms.ToArray());
+            var text = Encoding.UTF8.GetString(await file.ReadAllBytesAsync(ctx, ct));
             return Results.Ok(PiiService.Detect(text, file.FileName));
         }).WithName("DetectPii").DisableAntiforgery().Produces<PiiDetectionResponse>(200);
 
