@@ -80,7 +80,12 @@ jobs:
               xml = z.read(nuspec).decode("utf-8")
               deps = sorted(set(re.findall(r'<dependency id="([^"]+)"', xml)))
               licence = re.search(r'<license type="expression">(.*?)</license>', xml).group(1)
-              has_itext = any("itext" in d.lower() for d in deps)
+              # A tool package bundles its dependencies instead of declaring them,
+              # so the declared list alone cannot prove iText is absent. Check the
+              # files in the package too.
+              files = z.namelist()
+              has_itext = (any("itext" in d.lower() for d in deps)
+                           or any("itext" in f.lower() for f in files))
               print(f"{name}: licence={licence} itext={has_itext}")
               if licence != want_licence:
                   failures.append(f"{name}: expected {want_licence}, found {licence}")

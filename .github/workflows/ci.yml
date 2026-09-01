@@ -136,7 +136,11 @@ jobs:
           xml = z.read(nuspec).decode("utf-8")
           deps = sorted(set(re.findall(r'<dependency id="([^"]+)"', xml)))
           licence = re.search(r'<license type="expression">(.*?)</license>', xml).group(1)
-          offenders = [d for d in deps if "itext" in d.lower()]
+          # A package can carry iText without declaring it — a tool package
+          # bundles its dependencies — so check the files as well as the deps.
+          files = z.namelist()
+          offenders = ([d for d in deps if "itext" in d.lower()]
+                       + [f for f in files if "itext" in f.lower()])
           print(f"{pkg}\n  licence: {licence}\n  deps: {', '.join(deps)}")
           if licence != "MIT":
               sys.exit(f"::error::Expected MIT, found {licence}")
