@@ -5,33 +5,32 @@ using Spectre.Console;
 
 namespace Aelena.FileApi.Cli.Commands;
 
+/// <summary><c>fileapi zip</c> — list an archive's contents without extracting it.</summary>
 public static class ZipCommand
 {
     public static Command Create()
     {
-        var fileArg = new Argument<FileInfo>("file", "ZIP archive");
+        var fileArg = CommandExtensions.FileArgument("ZIP archive");
         var cmd = new Command("zip", "Inspect ZIP archive contents") { fileArg };
 
-        cmd.SetHandler(file =>
+        return cmd.WithAction(parse =>
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var z = ZipService.Inspect(data, file.Name);
+            var file = parse.GetRequiredValue(fileArg);
+            var archive = ZipService.Inspect(Output.ReadFile(file), file.Name);
 
             var table = new Table().Border(TableBorder.Rounded)
-                .Title($"[bold]ZIP: {Markup.Escape(file.Name)}[/] ({z.TotalFiles} files, {z.TotalDirs} dirs)")
+                .Title($"[bold]ZIP: {Markup.Escape(file.Name)}[/] ({archive.TotalFiles} files, {archive.TotalDirs} dirs)")
                 .AddColumn("Name").AddColumn("Size").AddColumn("Compressed").AddColumn("Method");
 
-            foreach (var e in z.Entries)
+            foreach (var entry in archive.Entries)
                 table.AddRow(
-                    Markup.Escape(e.Filename),
-                    e.IsDir ? "-" : $"{e.FileSize:N0}",
-                    e.IsDir ? "-" : $"{e.CompressedSize:N0}",
-                    e.CompressionMethod);
+                    Markup.Escape(entry.Filename),
+                    entry.IsDir ? "-" : $"{entry.FileSize:N0}",
+                    entry.IsDir ? "-" : $"{entry.CompressedSize:N0}",
+                    Markup.Escape(entry.CompressionMethod));
 
             AnsiConsole.Write(table);
-            AnsiConsole.MarkupLine($"Total uncompressed: [bold]{z.TotalUncompressedSize:N0}[/] bytes");
-        }, fileArg);
-
-        return cmd;
+            AnsiConsole.MarkupLine($"Total uncompressed: [bold]{archive.TotalUncompressedSize:N0}[/] bytes");
+        });
     }
 }

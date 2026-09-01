@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Aelena.FileApi.Api.Logging;
 
 namespace Aelena.FileApi.Api.Services;
 
@@ -22,11 +23,11 @@ public sealed class WebhookService(IHttpClientFactory httpClientFactory, ILogger
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
             using var response = await client.PostAsync(url, content, ct);
 
-            log.LogInformation("Webhook {Url} responded {StatusCode}", url, (int)response.StatusCode);
+            LogMessages.WebhookDelivered(log, url, (int)response.StatusCode);
         }
         catch (Exception ex)
         {
-            log.LogWarning(ex, "Webhook delivery failed for {Url}", url);
+            LogMessages.WebhookFailed(log, ex, url);
         }
     }
 }

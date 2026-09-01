@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -399,7 +400,7 @@ public static class PdfService
             if (md.Length > 0)
                 md.AppendLine().AppendLine("---").AppendLine();
 
-            md.AppendLine($"<!-- Page {idx + 1} -->").AppendLine();
+            md.AppendLine(CultureInfo.InvariantCulture, $"<!-- Page {idx + 1} -->").AppendLine();
 
             var text = ExtractPageText(doc.GetPage(idx + 1));
             foreach (var line in text.Split('\n'))
@@ -408,9 +409,9 @@ public static class PdfService
                 if (string.IsNullOrEmpty(t)) { md.AppendLine(); continue; }
 
                 if (IsLikelyHeading(t))
-                    md.AppendLine($"## {t}");
+                    md.Append("## ").AppendLine(t);
                 else if (IsLikelySubheading(t))
-                    md.AppendLine($"### {t}");
+                    md.Append("### ").AppendLine(t);
                 else
                     md.AppendLine(t);
             }
@@ -924,8 +925,8 @@ public static class PdfService
             var page = doc.GetPage(i);
             var sz = page.GetPageSize();
             var label = fmt
-                .Replace("{n}", (start + i - 1).ToString())
-                .Replace("{total}", totalPages.ToString());
+                .Replace("{n}", (start + i - 1).ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
+                .Replace("{total}", totalPages.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal);
 
             var textWidth = font.GetWidth(label, fontSize);
             var (x, y) = ResolvePosition(position, sz, margin, textWidth);
@@ -1128,7 +1129,7 @@ public static class PdfService
     /// <summary>Heuristic: short all-caps lines with letters are likely headings.</summary>
     private static bool IsLikelyHeading(string line) =>
         line.Length is > 2 and < 80
-        && line == line.ToUpperInvariant()
+        && !line.Any(char.IsLower)
         && line.Any(char.IsLetter)
         && !line.Contains('\t');
 

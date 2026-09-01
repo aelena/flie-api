@@ -14,8 +14,8 @@ public class FileApiCollection : ICollectionFixture<WebApplicationFactory<Progra
 [Collection("FileApi")]
 public abstract class FileApiFixture
 {
-    protected readonly HttpClient Client;
-    protected readonly WebApplicationFactory<Program> Factory;
+    protected HttpClient Client { get; }
+    protected WebApplicationFactory<Program> Factory { get; }
 
     protected FileApiFixture(WebApplicationFactory<Program> factory)
     {

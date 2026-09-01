@@ -14,4 +14,7 @@ var root = new RootCommand("fileapi — Document processing CLI powered by Aelen
     EmailCommand.Create()
 };
 
-return await root.InvokeAsync(args);
+// Every command maps its own failures onto an exit code (see CommandExtensions.
+// WithAction), so the framework's catch-all — which prints a raw stack trace — is
+// only reached by a genuine defect, and is left on deliberately for that case.
+return root.Parse(args).Invoke();

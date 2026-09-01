@@ -3,7 +3,7 @@
   <PropertyGroup>
     <RootNamespace>Aelena.FileApi.Core</RootNamespace>
     <PackageId>Aelena.FileApi.Core</PackageId>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Authors>aelena</Authors>
     <Description>Pure document processing library — PDF, DOCX, image, email, hash, PII, readability, and more. Zero ASP.NET dependencies. Use standalone or behind any host (API, CLI, gRPC).</Description>
     <PackageTags>document;pdf;docx;image;ocr;hash;pii;readability</PackageTags>
@@ -14,32 +14,32 @@
 
   <ItemGroup>
     <!-- Auth (JWT) -->
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.*" />
-    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.*" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" />
 
     <!-- Token counting -->
-    <PackageReference Include="SharpToken" Version="2.*" />
+    <PackageReference Include="SharpToken" />
 
     <!-- SQLite persistence -->
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.*" />
-    <PackageReference Include="Dapper" Version="2.*" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Dapper" />
 
     <!-- Templating -->
-    <PackageReference Include="Scriban" Version="5.*" />
+    <PackageReference Include="Scriban" />
 
     <!-- PDF -->
-    <PackageReference Include="itext7" Version="8.*" />
-    <PackageReference Include="itext7.bouncy-castle-adapter" Version="8.*" />
+    <PackageReference Include="itext7" />
+    <PackageReference Include="itext7.bouncy-castle-adapter" />
 
     <!-- DOCX / Office -->
-    <PackageReference Include="DocumentFormat.OpenXml" Version="3.*" />
+    <PackageReference Include="DocumentFormat.OpenXml" />
 
     <!-- Email -->
-    <PackageReference Include="MimeKit" Version="4.*" />
+    <PackageReference Include="MimeKit" />
 
     <!-- Image -->
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.*" />
-    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.*" />
+    <PackageReference Include="SixLabors.ImageSharp" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" />
   </ItemGroup>
 
 </Project>

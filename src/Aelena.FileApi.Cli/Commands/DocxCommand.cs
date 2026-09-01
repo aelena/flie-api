@@ -1,84 +1,88 @@
 using System.CommandLine;
 using Aelena.FileApi.Cli.Helpers;
 using Aelena.FileApi.Core.Services.Docx;
+using Spectre.Console;
 
 namespace Aelena.FileApi.Cli.Commands;
 
+/// <summary><c>fileapi docx</c> — metrics, metadata, Markdown conversion, health.</summary>
 public static class DocxCommand
 {
     public static Command Create()
     {
         var cmd = new Command("docx", "DOCX operations — metrics, metadata, markdown, health");
-        cmd.AddCommand(Metrics());
-        cmd.AddCommand(Metadata());
-        cmd.AddCommand(Markdown());
-        cmd.AddCommand(Health());
+        cmd.Add(Metrics());
+        cmd.Add(Metadata());
+        cmd.Add(Markdown());
+        cmd.Add(Health());
         return cmd;
     }
 
     private static Command Metrics()
     {
-        var fileArg = new Argument<FileInfo>("file", "DOCX file");
+        var fileArg = CommandExtensions.FileArgument("DOCX file");
         var cmd = new Command("metrics", "Get document metrics") { fileArg };
-        cmd.SetHandler(file =>
+
+        return cmd.WithAction(parse =>
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var m = DocxService.GetMetrics(data, file.Name);
+            var file = parse.GetRequiredValue(fileArg);
+            var metrics = DocxService.GetMetrics(Output.ReadFile(file), file.Name);
+
             Output.Properties($"DOCX Metrics: {file.Name}",
-                ("Paragraphs", m.ParagraphCount.ToString()),
-                ("Words", m.WordCount.ToString("N0")),
-                ("Tables", m.TableCount.ToString()),
-                ("Images", m.ImageCount.ToString()),
-                ("Pages", m.PageCount?.ToString() ?? "unknown"),
-                ("Language", m.Language),
-                ("Size", $"{m.FileSizeBytes:N0} bytes"));
-        }, fileArg);
-        return cmd;
+                ("Paragraphs", metrics.ParagraphCount.Display()),
+                ("Words", metrics.WordCount.Display("N0")),
+                ("Tables", metrics.TableCount.Display()),
+                ("Images", metrics.ImageCount.Display()),
+                ("Pages", metrics.PageCount?.Display() ?? "unknown"),
+                ("Language", metrics.Language),
+                ("Size", $"{metrics.FileSizeBytes:N0} bytes"));
+        });
     }
 
     private static Command Metadata()
     {
-        var fileArg = new Argument<FileInfo>("file", "DOCX file");
+        var fileArg = CommandExtensions.FileArgument("DOCX file");
         var cmd = new Command("metadata", "Extract metadata") { fileArg };
-        cmd.SetHandler(file =>
+
+        return cmd.WithAction(parse =>
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var m = DocxService.GetMetadata(data, file.Name);
+            var file = parse.GetRequiredValue(fileArg);
+            var meta = DocxService.GetMetadata(Output.ReadFile(file), file.Name);
+
             Output.Properties($"DOCX Metadata: {file.Name}",
-                ("Title", m.Title), ("Author", m.Author), ("Subject", m.Subject),
-                ("Keywords", m.Keywords), ("Category", m.Category),
-                ("Created", m.Created), ("Modified", m.Modified),
-                ("Revision", m.Revision?.ToString()));
-        }, fileArg);
-        return cmd;
+                ("Title", meta.Title), ("Author", meta.Author), ("Subject", meta.Subject),
+                ("Keywords", meta.Keywords), ("Category", meta.Category),
+                ("Created", meta.Created), ("Modified", meta.Modified),
+                ("Revision", meta.Revision?.Display()));
+        });
     }
 
     private static Command Markdown()
     {
-        var fileArg = new Argument<FileInfo>("file", "DOCX file");
+        var fileArg = CommandExtensions.FileArgument("DOCX file");
         var cmd = new Command("markdown", "Convert to Markdown") { fileArg };
-        cmd.SetHandler(file =>
+
+        return cmd.WithAction(parse =>
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var m = DocxService.ExtractToMarkdown(data, file.Name);
-            Console.WriteLine(m.Markdown);
-        }, fileArg);
-        return cmd;
+            var file = parse.GetRequiredValue(fileArg);
+            Console.WriteLine(DocxService.ExtractToMarkdown(Output.ReadFile(file), file.Name).Markdown);
+        });
     }
 
     private static Command Health()
     {
-        var fileArg = new Argument<FileInfo>("file", "DOCX file");
+        var fileArg = CommandExtensions.FileArgument("DOCX file");
         var cmd = new Command("health", "Run health check") { fileArg };
-        cmd.SetHandler(file =>
+
+        return cmd.WithAction(parse =>
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var h = DocxService.HealthCheck(data, file.Name);
-            var status = h.Healthy ? "[green]Healthy[/]" : "[red]Issues found[/]";
-            Spectre.Console.AnsiConsole.MarkupLine($"Status: {status}");
-            if (h.Issues.Count > 0)
-                Output.List("Issues", h.Issues.Select(i => $"[{i.Severity}] {i.Message}"));
-        }, fileArg);
-        return cmd;
+            var file = parse.GetRequiredValue(fileArg);
+            var health = DocxService.HealthCheck(Output.ReadFile(file), file.Name);
+
+            var status = health.Healthy ? "[green]Healthy[/]" : "[red]Issues found[/]";
+            AnsiConsole.MarkupLine($"Status: {status}");
+            if (health.Issues.Count > 0)
+                Output.List("Issues", health.Issues.Select(i => $"[{i.Severity}] {i.Message}"));
+        });
     }
 }

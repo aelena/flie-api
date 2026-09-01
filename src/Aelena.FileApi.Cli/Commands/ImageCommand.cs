@@ -4,125 +4,163 @@ using Aelena.FileApi.Core.Services.Image;
 
 namespace Aelena.FileApi.Cli.Commands;
 
+/// <summary><c>fileapi image</c> — resize, rotate, convert, and filter images.</summary>
 public static class ImageCommand
 {
     public static Command Create()
     {
         var cmd = new Command("image", "Image operations — resize, rotate, crop, convert, blur, etc.");
-        cmd.AddCommand(Exif());
-        cmd.AddCommand(Resize());
-        cmd.AddCommand(Rotate());
-        cmd.AddCommand(Convert());
-        cmd.AddCommand(Grayscale());
-        cmd.AddCommand(Blur());
-        cmd.AddCommand(Compress());
+        cmd.Add(Exif());
+        cmd.Add(Resize());
+        cmd.Add(Rotate());
+        cmd.Add(Convert());
+        cmd.Add(Grayscale());
+        cmd.Add(Blur());
+        cmd.Add(Compress());
         return cmd;
     }
 
     private static Command Exif()
     {
-        var fileArg = new Argument<FileInfo>("file", "Image file");
+        var fileArg = CommandExtensions.FileArgument("Image file");
         var cmd = new Command("exif", "Extract EXIF metadata") { fileArg };
-        cmd.SetHandler(file =>
+
+        return cmd.WithAction(parse =>
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var e = ImageService.GetExif(data, file.Name);
+            var file = parse.GetRequiredValue(fileArg);
+            var exif = ImageService.GetExif(Output.ReadFile(file), file.Name);
+
             Output.Properties($"EXIF: {file.Name}",
-                ("Format", e.Format), ("Width", e.Width?.ToString()), ("Height", e.Height?.ToString()),
-                ("Mode", e.Mode), ("Size", $"{e.FileSizeBytes:N0} bytes"));
-            if (e.Exif is { Count: > 0 })
-                Output.Properties("EXIF Tags", e.Exif.Select(kv => (kv.Key, (string?)kv.Value)).ToArray());
-        }, fileArg);
-        return cmd;
+                ("Format", exif.Format),
+                ("Width", exif.Width?.Display()),
+                ("Height", exif.Height?.Display()),
+                ("Mode", exif.Mode),
+                ("Size", $"{exif.FileSizeBytes:N0} bytes"));
+
+            if (exif.Exif is { Count: > 0 })
+                Output.Properties("EXIF Tags", [.. exif.Exif.Select(kv => (kv.Key, (string?)kv.Value))]);
+        });
     }
 
     private static Command Resize()
     {
-        var fileArg = new Argument<FileInfo>("file", "Image file");
-        var wOpt = new Option<int?>("-w", "Target width");
-        var hOpt = new Option<int?>("-h", "Target height");
-        var outOpt = new Option<string?>("-o", "Output file");
-        var cmd = new Command("resize", "Resize an image") { fileArg, wOpt, hOpt, outOpt };
-        cmd.SetHandler((file, w, h, o) =>
+        var fileArg = CommandExtensions.FileArgument("Image file");
+
+        // "-h" is reserved for --help, so height takes the long form only. The old
+        // "-h 100" was silently swallowed by the help option instead of resizing.
+        var widthOpt = new Option<int?>("--width", "-w") { Description = "Target width in pixels" };
+        var heightOpt = new Option<int?>("--height") { Description = "Target height in pixels" };
+        var outOpt = CommandExtensions.OutputOption();
+
+        var cmd = new Command("resize", "Resize an image, preserving aspect ratio when only one side is given")
+            { fileArg, widthOpt, heightOpt, outOpt };
+
+        return cmd.WithAction(parse =>
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var (name, bytes, _) = ImageService.Resize(data, file.Name, w, h);
-            Output.WriteFile(o ?? name, bytes);
-        }, fileArg, wOpt, hOpt, outOpt);
-        return cmd;
+            var file = parse.GetRequiredValue(fileArg);
+            var (name, bytes, _) = ImageService.Resize(
+                Output.ReadFile(file), file.Name,
+                parse.GetValue(widthOpt), parse.GetValue(heightOpt));
+
+            Output.WriteFile(parse.GetValue(outOpt) ?? name, bytes);
+        });
     }
 
     private static Command Rotate()
     {
-        var fileArg = new Argument<FileInfo>("file", "Image file");
-        var angleOpt = new Option<float>("--angle", "Rotation angle in degrees") { IsRequired = true };
-        var outOpt = new Option<string?>("-o", "Output file");
-        var cmd = new Command("rotate", "Rotate an image") { fileArg, angleOpt, outOpt };
-        cmd.SetHandler((file, angle, o) =>
+        var fileArg = CommandExtensions.FileArgument("Image file");
+        var angleOpt = new Option<float>("--angle")
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var (name, bytes, _) = ImageService.Rotate(data, file.Name, angle);
-            Output.WriteFile(o ?? name, bytes);
-        }, fileArg, angleOpt, outOpt);
-        return cmd;
+            Description = "Rotation angle in degrees, clockwise",
+            Required = true
+        };
+        var outOpt = CommandExtensions.OutputOption();
+        var cmd = new Command("rotate", "Rotate an image") { fileArg, angleOpt, outOpt };
+
+        return cmd.WithAction(parse =>
+        {
+            var file = parse.GetRequiredValue(fileArg);
+            var (name, bytes, _) = ImageService.Rotate(
+                Output.ReadFile(file), file.Name, parse.GetRequiredValue(angleOpt));
+
+            Output.WriteFile(parse.GetValue(outOpt) ?? name, bytes);
+        });
     }
 
     private static Command Convert()
     {
-        var fileArg = new Argument<FileInfo>("file", "Image file");
-        var fmtOpt = new Option<string>("--format", "Target format: png, jpeg, webp, bmp, gif, tiff") { IsRequired = true };
-        var outOpt = new Option<string?>("-o", "Output file");
-        var cmd = new Command("convert", "Convert image format") { fileArg, fmtOpt, outOpt };
-        cmd.SetHandler((file, fmt, o) =>
+        var fileArg = CommandExtensions.FileArgument("Image file");
+        var formatOpt = new Option<string>("--format")
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var (name, bytes, _) = ImageService.Convert(data, file.Name, fmt);
-            Output.WriteFile(o ?? name, bytes);
-        }, fileArg, fmtOpt, outOpt);
-        return cmd;
+            Description = "Target format",
+            Required = true
+        }.AcceptOnlyFromAmong("png", "jpeg", "jpg", "webp", "bmp", "gif", "tiff");
+        var outOpt = CommandExtensions.OutputOption();
+        var cmd = new Command("convert", "Convert image format") { fileArg, formatOpt, outOpt };
+
+        return cmd.WithAction(parse =>
+        {
+            var file = parse.GetRequiredValue(fileArg);
+            var (name, bytes, _) = ImageService.Convert(
+                Output.ReadFile(file), file.Name, parse.GetRequiredValue(formatOpt));
+
+            Output.WriteFile(parse.GetValue(outOpt) ?? name, bytes);
+        });
     }
 
     private static Command Grayscale()
     {
-        var fileArg = new Argument<FileInfo>("file", "Image file");
-        var outOpt = new Option<string?>("-o", "Output file");
+        var fileArg = CommandExtensions.FileArgument("Image file");
+        var outOpt = CommandExtensions.OutputOption();
         var cmd = new Command("grayscale", "Convert to grayscale") { fileArg, outOpt };
-        cmd.SetHandler((file, o) =>
+
+        return cmd.WithAction(parse =>
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var (name, bytes, _) = ImageService.Grayscale(data, file.Name);
-            Output.WriteFile(o ?? name, bytes);
-        }, fileArg, outOpt);
-        return cmd;
+            var file = parse.GetRequiredValue(fileArg);
+            var (name, bytes, _) = ImageService.Grayscale(Output.ReadFile(file), file.Name);
+            Output.WriteFile(parse.GetValue(outOpt) ?? name, bytes);
+        });
     }
 
     private static Command Blur()
     {
-        var fileArg = new Argument<FileInfo>("file", "Image file");
-        var radiusOpt = new Option<float>("--radius", () => 2f, "Blur radius");
-        var outOpt = new Option<string?>("-o", "Output file");
-        var cmd = new Command("blur", "Apply Gaussian blur") { fileArg, radiusOpt, outOpt };
-        cmd.SetHandler((file, radius, o) =>
+        var fileArg = CommandExtensions.FileArgument("Image file");
+        var radiusOpt = new Option<float>("--radius")
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var (name, bytes, _) = ImageService.Blur(data, file.Name, radius);
-            Output.WriteFile(o ?? name, bytes);
-        }, fileArg, radiusOpt, outOpt);
-        return cmd;
+            Description = "Blur radius in pixels",
+            DefaultValueFactory = _ => 2f
+        };
+        var outOpt = CommandExtensions.OutputOption();
+        var cmd = new Command("blur", "Apply Gaussian blur") { fileArg, radiusOpt, outOpt };
+
+        return cmd.WithAction(parse =>
+        {
+            var file = parse.GetRequiredValue(fileArg);
+            var (name, bytes, _) = ImageService.Blur(
+                Output.ReadFile(file), file.Name, parse.GetRequiredValue(radiusOpt));
+
+            Output.WriteFile(parse.GetValue(outOpt) ?? name, bytes);
+        });
     }
 
     private static Command Compress()
     {
-        var fileArg = new Argument<FileInfo>("file", "Image file");
-        var qualOpt = new Option<int>("--quality", () => 85, "JPEG quality 1-100");
-        var outOpt = new Option<string?>("-o", "Output file");
-        var cmd = new Command("compress", "Compress as JPEG") { fileArg, qualOpt, outOpt };
-        cmd.SetHandler((file, quality, o) =>
+        var fileArg = CommandExtensions.FileArgument("Image file");
+        var qualityOpt = new Option<int>("--quality")
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var (name, bytes, _) = ImageService.Compress(data, file.Name, quality);
-            Output.WriteFile(o ?? name, bytes);
-        }, fileArg, qualOpt, outOpt);
-        return cmd;
+            Description = "JPEG quality, 1 (smallest) to 100 (best)",
+            DefaultValueFactory = _ => 85
+        };
+        var outOpt = CommandExtensions.OutputOption();
+        var cmd = new Command("compress", "Compress as JPEG") { fileArg, qualityOpt, outOpt };
+
+        return cmd.WithAction(parse =>
+        {
+            var file = parse.GetRequiredValue(fileArg);
+            var (name, bytes, _) = ImageService.Compress(
+                Output.ReadFile(file), file.Name, parse.GetRequiredValue(qualityOpt));
+
+            Output.WriteFile(parse.GetValue(outOpt) ?? name, bytes);
+        });
     }
 }

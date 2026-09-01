@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using Aelena.FileApi.Api.Auth;
 using Aelena.FileApi.Api.Configuration;
+using Aelena.FileApi.Api.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Aelena.FileApi.Api.Middleware;
@@ -43,7 +45,7 @@ public sealed class AuthRateLimitMiddleware(
         // ── Daily request rate limit ─────────────────────────────────
         if (!AppSettings.IsUnlimited(cfg.MaxRequestsPerDay) && !IncrementAndCheck(appId, cfg.MaxRequestsPerDay))
         {
-            log.LogWarning("Rate limit exceeded for {AppId}", appId);
+            LogMessages.RateLimitExceeded(log, appId, cfg.MaxRequestsPerDay);
             await WriteProblem(ctx, 429, "Too Many Requests",
                 $"Daily request limit ({cfg.MaxRequestsPerDay}) exceeded");
             return;
@@ -72,7 +74,7 @@ public sealed class AuthRateLimitMiddleware(
 
     private static bool IncrementAndCheck(string appId, int maxPerDay)
     {
-        var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        var today = DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var bucket = DailyCounts.GetOrAdd(today, _ => new ConcurrentDictionary<string, int>());
         var count = bucket.AddOrUpdate(appId, 1, (_, c) => c + 1);
         return count <= maxPerDay;

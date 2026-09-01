@@ -3,6 +3,9 @@ namespace Aelena.FileApi.Api.Endpoints;
 /// <summary>Geospatial feature extraction endpoints — KML, KMZ, GeoJSON, Shapefile, DXF.</summary>
 public static class GeospatialEndpoints
 {
+    private static readonly string[] SupportedExtensions =
+        ["kml", "kmz", "geojson", "shp", "dxf", "geotiff"];
+
     public static RouteGroupBuilder MapGeospatialEndpoints(this RouteGroupBuilder group)
     {
         group.MapPost("/extract", (IFormFile file) =>
@@ -19,7 +22,7 @@ public static class GeospatialEndpoints
 
         group.MapGet("/formats", () => Results.Ok(new
         {
-            supported_extensions = new[] { "kml", "kmz", "geojson", "shp", "dxf", "geotiff" },
+            supported_extensions = SupportedExtensions,
             notes = "Geospatial processing uses NetTopologySuite + BitMiracle.LibTiff.NET. DWG support is partial (DXF only via netDxf)."
         })).WithName("GeospatialFormats");
 

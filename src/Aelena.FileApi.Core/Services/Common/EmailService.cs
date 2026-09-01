@@ -20,7 +20,7 @@ public static class EmailService
     /// <returns>Structured email data.</returns>
     public static EmailParseResponse Parse(byte[] data, string fileName)
     {
-        var ext = System.IO.Path.GetExtension(fileName).TrimStart('.').ToLowerInvariant();
+        var ext = Path.GetExtension(fileName).TrimStart('.').ToLowerInvariant();
         return ext switch
         {
             "eml" => ParseEml(data, fileName),
@@ -102,8 +102,6 @@ public static class EmailService
         }
     }
 
-    private static IReadOnlyList<string>? AddressList(InternetAddressList addresses) =>
-        addresses.Count > 0
-            ? addresses.Select(a => a.ToString()).ToList()
-            : null;
+    private static string[]? AddressList(InternetAddressList addresses) =>
+        addresses.Count > 0 ? [.. addresses.Select(a => a.ToString())] : null;
 }

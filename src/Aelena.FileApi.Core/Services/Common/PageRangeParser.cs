@@ -1,3 +1,4 @@
+using System.Globalization;
 namespace Aelena.FileApi.Core.Services.Common;
 
 /// <summary>
@@ -25,8 +26,8 @@ public static class PageRangeParser
             if (trimmed.Contains('-'))
             {
                 var bounds = trimmed.Split('-', 2);
-                var start = int.Parse(bounds[0].Trim());
-                var end = int.Parse(bounds[1].Trim());
+                var start = int.Parse(bounds[0].Trim(), CultureInfo.InvariantCulture);
+                var end = int.Parse(bounds[1].Trim(), CultureInfo.InvariantCulture);
 
                 if (start < 1 || end < 1 || start > maxPage || end > maxPage)
                     throw new ArgumentException($"Page range {trimmed} out of bounds (1-{maxPage})");
@@ -36,7 +37,7 @@ public static class PageRangeParser
             }
             else
             {
-                var page = int.Parse(trimmed);
+                var page = int.Parse(trimmed, CultureInfo.InvariantCulture);
                 if (page < 1 || page > maxPage)
                     throw new ArgumentException($"Page {page} out of bounds (1-{maxPage})");
 

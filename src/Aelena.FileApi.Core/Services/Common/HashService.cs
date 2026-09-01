@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 using Aelena.FileApi.Core.Models;
@@ -15,30 +16,49 @@ public static class HashService
     /// <param name="data">Raw file bytes.</param>
     /// <param name="fileName">Original filename (used in composite hash).</param>
     /// <param name="contentType">MIME content type, if known.</param>
+    [SuppressMessage("Security", "CA5350:Do Not Use Weak Cryptographic Algorithms",
+        Justification = "MD5/SHA-1 are emitted as content fingerprints for interop with external "
+                      + "catalogues that index by them. They are never used to authenticate or "
+                      + "sign; SHA-256 is the primary digest.")]
+    [SuppressMessage("Security", "CA5351:Do Not Use Broken Cryptographic Algorithms",
+        Justification = "MD5/SHA-1 are emitted as content fingerprints for interop with external "
+                      + "catalogues that index by them. They are never used to authenticate or "
+                      + "sign; SHA-256 is the primary digest.")]
     public static FileHashResponse ComputeHash(byte[] data, string fileName, string? contentType = null)
     {
-        var sha256 = ToHex(SHA256.HashData(data));
-        var md5 = ToHex(MD5.HashData(data));
-        var sha1 = ToHex(SHA1.HashData(data));
-
-        // Composite: fold in filename and size so identical content under
-        // different names produces a distinct fingerprint.
-        var prefix = Encoding.UTF8.GetBytes($"{fileName}:{data.Length}:");
-        var compositeInput = new byte[prefix.Length + data.Length];
-        prefix.CopyTo(compositeInput, 0);
-        data.CopyTo(compositeInput, prefix.Length);
-        var compositeSha256 = ToHex(SHA256.HashData(compositeInput));
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(fileName);
 
         return new FileHashResponse(
             FileName: fileName,
             FileSizeBytes: data.Length,
             ContentType: contentType,
-            Sha256: sha256,
-            Md5: md5,
-            Sha1: sha1,
-            CompositeSha256: compositeSha256);
+            Sha256: ToHex(SHA256.HashData(data)),
+            Md5: ToHex(MD5.HashData(data)),
+            Sha1: ToHex(SHA1.HashData(data)),
+            CompositeSha256: CompositeSha256(data, fileName));
     }
 
-    private static string ToHex(byte[] bytes) =>
-        Convert.ToHexString(bytes).ToLowerInvariant();
+    /// <summary>
+    /// Fold the filename and length in ahead of the content so that identical bytes
+    /// stored under different names produce distinct fingerprints.
+    /// </summary>
+    /// <remarks>
+    /// Hashed incrementally rather than into a concatenated buffer: the previous
+    /// implementation allocated a second copy of the whole file on every request,
+    /// which doubled peak memory for large uploads.
+    /// </remarks>
+    private static string CompositeSha256(ReadOnlySpan<byte> data, string fileName)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData(Encoding.UTF8.GetBytes($"{fileName}:{data.Length}:"));
+        hash.AppendData(data);
+
+        Span<byte> digest = stackalloc byte[SHA256.HashSizeInBytes];
+        hash.GetHashAndReset(digest);
+        return ToHex(digest);
+    }
+
+    private static string ToHex(ReadOnlySpan<byte> bytes) =>
+        Convert.ToHexStringLower(bytes);
 }

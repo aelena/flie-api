@@ -1,0 +1,24 @@
+<Project>
+
+  <!--
+    Imported after each csproj body, so $(IsTestProject) is already set here.
+    The same conditions in Directory.Build.props would evaluate before the
+    project declares it, and silently do nothing.
+  -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!--
+      CA1707: xUnit's Method_Scenario_Expectation convention is deliberate and
+              reads better than the PascalCase the rule asks for.
+      CA1861: a constant array inline in test arrangement is clearer than a
+              hoisted static field.
+      CA1711: xUnit collection-definition markers conventionally end in
+              'Collection'; the rule is about public API surface, which a test
+              marker class is not.
+      All three stay enforced in src/.
+    -->
+    <NoWarn>$(NoWarn);CA1707;CA1861;CA1711</NoWarn>
+  </PropertyGroup>
+
+</Project>

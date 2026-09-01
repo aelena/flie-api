@@ -12,7 +12,7 @@ namespace Aelena.FileApi.Grpc.Services;
 /// gRPC service implementation. All methods delegate to the same static Core services
 /// used by the HTTP API and CLI (ports and adapters pattern).
 /// </summary>
-public sealed class FileServiceImpl : FileService.FileServiceBase
+public sealed class FileGrpcService : FileService.FileServiceBase
 {
     // ── Compute-bound (high frequency) ───────────────────────────────────
 

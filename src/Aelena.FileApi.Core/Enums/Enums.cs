@@ -1,7 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Aelena.FileApi.Core.Enums;
 
 /// <summary>Comparison algorithm to use when diffing two documents.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
+[SuppressMessage("Naming", "CA1720:Identifier contains type name",
+    Justification = "'String' is the published wire value for this enum; renaming it would break API clients.")]
 public enum CompareMode
 {
     /// <summary>Character-level diff.</summary>

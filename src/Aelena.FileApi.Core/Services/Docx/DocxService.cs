@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 using System.Xml.Linq;
@@ -145,7 +146,7 @@ public static class DocxService
                 };
 
                 if (headingLevel > 0)
-                    md.AppendLine($"{new string('#', headingLevel)} {text}");
+                    md.AppendLine(CultureInfo.InvariantCulture, $"{new string('#', headingLevel)} {text}");
                 else
                     md.AppendLine(FormatRuns(para));
 
@@ -336,10 +337,15 @@ public static class DocxService
             var bold = run.RunProperties?.Bold is not null;
             var italic = run.RunProperties?.Italic is not null;
 
-            if (bold && italic) sb.Append($"***{text}***");
-            else if (bold) sb.Append($"**{text}**");
-            else if (italic) sb.Append($"*{text}*");
-            else sb.Append(text);
+            var marker = (bold, italic) switch
+            {
+                (true, true) => "***",
+                (true, false) => "**",
+                (false, true) => "*",
+                _ => ""
+            };
+
+            sb.Append(marker).Append(text).Append(marker);
         }
         return sb.ToString();
     }

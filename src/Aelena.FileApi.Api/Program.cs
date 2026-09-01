@@ -1,3 +1,4 @@
+using System.Globalization;
 using Aelena.FileApi.Api.Configuration;
 using Aelena.FileApi.Api.Endpoints;
 using Aelena.FileApi.Api.Middleware;
@@ -9,7 +10,7 @@ using Serilog;
 // ── Bootstrap Serilog early (before host builds) ────────────────────────────
 
 Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
+    .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
     .CreateBootstrapLogger();
 
 try

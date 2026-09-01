@@ -11,7 +11,7 @@ namespace Aelena.FileApi.Core.Services.Llm;
 public sealed class OpenAiCompatibleClient(LlmEndpointConfig config, HttpClient http) : ILlmClient
 {
     public async Task<string> CompleteAsync(
-        string systemPrompt, string userMessage, CancellationToken ct = default)
+        string systemPrompt, string userMessage, CancellationToken cancellationToken = default)
     {
         var payload = new
         {
@@ -24,11 +24,11 @@ public sealed class OpenAiCompatibleClient(LlmEndpointConfig config, HttpClient 
             temperature = 0.1
         };
 
-        return await SendRequest(payload, ct);
+        return await SendRequest(payload, cancellationToken);
     }
 
     public async Task<string> CompleteVisionAsync(
-        string systemPrompt, string userMessage, string imageBase64, string mediaType, CancellationToken ct = default)
+        string systemPrompt, string userMessage, string imageBase64, string mediaType, CancellationToken cancellationToken = default)
     {
         var payload = new
         {
@@ -53,10 +53,10 @@ public sealed class OpenAiCompatibleClient(LlmEndpointConfig config, HttpClient 
             temperature = 0.1
         };
 
-        return await SendRequest(payload, ct);
+        return await SendRequest(payload, cancellationToken);
     }
 
-    private async Task<string> SendRequest(object payload, CancellationToken ct)
+    private async Task<string> SendRequest(object payload, CancellationToken cancellationToken)
     {
         var baseUrl = config.BaseUrl.TrimEnd('/');
         var url = $"{baseUrl}/chat/completions";
@@ -70,10 +70,10 @@ public sealed class OpenAiCompatibleClient(LlmEndpointConfig config, HttpClient 
         if (!string.IsNullOrWhiteSpace(config.ApiKey))
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", config.ApiKey);
 
-        using var response = await http.SendAsync(request, ct);
+        using var response = await http.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var body = await response.Content.ReadAsStringAsync(ct);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(body);
 
         return doc.RootElement

@@ -5,7 +5,7 @@ builder.Services.AddGrpc();
 
 var app = builder.Build();
 
-app.MapGrpcService<FileServiceImpl>();
+app.MapGrpcService<FileGrpcService>();
 app.MapGet("/", () => "FileApi gRPC service. Use a gRPC client to connect.");
 
 app.Run();

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Aelena.FileApi.Api.Logging;
 
 namespace Aelena.FileApi.Api.Middleware;
 
@@ -32,8 +33,8 @@ public sealed class AuditLogMiddleware(RequestDelegate next, ILogger<AuditLogMid
         var fileName = ctx.Items["audit_file_name"] as string;
         var error = ctx.Response.StatusCode >= 400 ? $"HTTP {ctx.Response.StatusCode}" : null;
 
-        log.LogInformation(
-            "Audit: {Method} {Path} | File={FileName} Size={FileSize} | Status={StatusCode} Duration={DurationMs:F1}ms Error={Error}",
+        LogMessages.Audit(
+            log,
             ctx.Request.Method,
             ctx.Request.Path.Value,
             fileName,

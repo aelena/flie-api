@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Compression;
 using Aelena.FileApi.Core.Models;
 
@@ -62,7 +63,7 @@ public static class ZipService
                     FileSize: entry.Length,
                     CompressedSize: entry.CompressedLength,
                     CompressionMethod: entry.CompressedLength < entry.Length ? "deflated" : "stored",
-                    Crc32: entry.Crc32.ToString("x8"),
+                    Crc32: entry.Crc32.ToString("x8", CultureInfo.InvariantCulture),
                     LastModified: lastModified));
             }
 

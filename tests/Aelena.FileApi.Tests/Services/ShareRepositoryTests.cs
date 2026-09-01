@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Aelena.FileApi.Tests.Services;
 
-public class ShareRepositoryTests : IDisposable
+public sealed class ShareRepositoryTests : IDisposable
 {
     private readonly ShareRepository _repo;
     private readonly string _dbPath;

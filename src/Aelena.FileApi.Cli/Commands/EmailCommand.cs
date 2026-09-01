@@ -4,35 +4,37 @@ using Aelena.FileApi.Core.Services.Common;
 
 namespace Aelena.FileApi.Cli.Commands;
 
+/// <summary><c>fileapi email</c> — parse .eml files into headers, body, and attachments.</summary>
 public static class EmailCommand
 {
     public static Command Create()
     {
-        var fileArg = new Argument<FileInfo>("file", "Email file (.eml or .msg)");
+        var fileArg = CommandExtensions.FileArgument("Email file (.eml)");
         var cmd = new Command("email", "Parse email files") { fileArg };
 
-        cmd.SetHandler(file =>
+        return cmd.WithAction(parse =>
         {
-            var data = Output.ReadFileWithSpinner(file.FullName);
-            var e = EmailService.Parse(data, file.Name);
+            var file = parse.GetRequiredValue(fileArg);
+            var email = EmailService.Parse(Output.ReadFile(file), file.Name);
 
             Output.Properties($"Email: {file.Name}",
-                ("Subject", e.Subject),
-                ("From", e.FromAddress),
-                ("To", e.To is not null ? string.Join(", ", e.To) : null),
-                ("Cc", e.Cc is not null ? string.Join(", ", e.Cc) : null),
-                ("Date", e.Date),
-                ("Message-ID", e.MessageId),
-                ("Attachments", e.Attachments?.Count.ToString() ?? "0"));
+                ("Subject", email.Subject),
+                ("From", email.FromAddress),
+                ("To", Join(email.To)),
+                ("Cc", Join(email.Cc)),
+                ("Date", email.Date),
+                ("Message-ID", email.MessageId),
+                ("Attachments", (email.Attachments?.Count ?? 0).Display()));
 
-            if (e.BodyText is not null)
+            if (email.BodyText is not null)
             {
                 Console.WriteLine();
                 Console.WriteLine("--- Body ---");
-                Console.WriteLine(e.BodyText);
+                Console.WriteLine(email.BodyText);
             }
-        }, fileArg);
-
-        return cmd;
+        });
     }
+
+    private static string? Join(IReadOnlyList<string>? addresses) =>
+        addresses is { Count: > 0 } ? string.Join(", ", addresses) : null;
 }

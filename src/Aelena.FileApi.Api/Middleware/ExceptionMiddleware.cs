@@ -1,4 +1,4 @@
-using System.Net.Mime;
+using Aelena.FileApi.Api.Logging;
 
 namespace Aelena.FileApi.Api.Middleware;
 
@@ -17,18 +17,21 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
         }
         catch (FileApiException ex)
         {
-            log.LogWarning(ex, "FileApiException {StatusCode}: {Detail}", ex.StatusCode, ex.Detail);
+            LogMessages.HandledFailure(
+                log, ex, ex.StatusCode, ctx.Request.Method, ctx.Request.Path.Value, ex.Detail);
             await WriteProblem(ctx, ex.StatusCode, ex.Title, ex.Detail, ex.ErrorType);
         }
         catch (BadHttpRequestException ex)
         {
-            log.LogWarning(ex, "Bad request: {Message}", ex.Message);
-            await WriteProblem(ctx, 400, "Bad Request", ex.Message);
+            LogMessages.HandledFailure(
+                log, ex, StatusCodes.Status400BadRequest, ctx.Request.Method, ctx.Request.Path.Value, ex.Message);
+            await WriteProblem(ctx, StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "Unhandled exception on {Method} {Path}", ctx.Request.Method, ctx.Request.Path);
-            await WriteProblem(ctx, 500, "Internal Server Error", "An unexpected error occurred.");
+            LogMessages.UnhandledException(log, ex, ctx.Request.Method, ctx.Request.Path.Value);
+            await WriteProblem(ctx, StatusCodes.Status500InternalServerError, "Internal Server Error",
+                "An unexpected error occurred.");
         }
     }
 
