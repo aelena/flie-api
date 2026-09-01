@@ -399,6 +399,35 @@ the build on a known advisory.
 | `docling` | Separate project | IBM ML document parser — no .NET equivalent |
 | GDAL | Partial | Using NetTopologySuite + LibTiff.NET instead |
 
+## Releasing
+
+Publishing uses **NuGet Trusted Publishing** — nuget.org exchanges a short-lived
+GitHub OIDC token for a one-hour API key, so no long-lived secret is stored. The
+job needs `id-token: write`, which `release.yml` declares.
+
+One-time setup on nuget.org (Account → Trusted Publishing), one policy per repo:
+
+| Field | Value |
+|-------|-------|
+| Repository Owner | `aelena` |
+| Repository | `file-api` |
+| Workflow File | `release.yml` (file name only, no path) |
+| Environment | leave empty |
+| Glob Patterns and Packages | `Aelena.FileApi.*` |
+
+Then add a repository **variable or secret** `NUGET_USER` holding the nuget.org
+profile name (not an email address).
+
+To cut a release: set `<Version>` in the three packable csproj files, commit, then
+
+```bash
+git tag v0.3.0 && git push origin v0.3.0
+```
+
+The workflow tests, packs, re-checks the MIT/AGPL boundary, refuses to continue
+if the tag does not match the package version, publishes, and opens a GitHub
+release. `workflow_dispatch` runs it as a dry run without pushing.
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md). The 0.3.0 entry documents the modernization
