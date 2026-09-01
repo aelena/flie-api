@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Aelena.FileApi.Core</RootNamespace>
+    <PackageId>Aelena.FileApi.Core.Pdf</PackageId>
+    <Version>0.3.0</Version>
+    <Authors>aelena</Authors>
+    <Description>PDF operations for Aelena.FileApi.Core, built on iText 7.
+
+IMPORTANT LICENSING NOTE: this package depends on iText 7, which is licensed under the AGPL. The AGPL is a strong copyleft licence: if you use this package in a network-facing application, that obligation extends to your application. Use iText's commercial licence if that is not acceptable. The rest of the toolkit — DOCX, images, email, hashing, PII, readability, text and ZIP — lives in Aelena.FileApi.Core, which is MIT and has no iText dependency.</Description>
+    <PackageTags>pdf;itext;document;extraction;merge;split;watermark</PackageTags>
+    <!--
+      AGPL, not MIT, and deliberately so. This package cannot be licensed more
+      permissively than iText 7, the library it is built on. Aelena.FileApi.Core
+      stays MIT precisely because it does not reference iText.
+    -->
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <RepositoryUrl>https://github.com/aelena/file-api</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/aelena/file-api</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aelena.FileApi.Core\Aelena.FileApi.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="itext7" />
+    <PackageReference Include="itext7.bouncy-castle-adapter" />
+  </ItemGroup>
+
+</Project>

@@ -32,4 +32,14 @@
     <NoWarn>$(NoWarn);IDE0005</NoWarn>
   </PropertyGroup>
 
+  <!--
+    Same reasoning for the MIT-only build: -p:IncludePdf=false compiles out the
+    PDF tests, which makes the usings they need redundant in that configuration
+    and required in the default one. The rule stays enforced on the default
+    build, which is what CI gates on.
+  -->
+  <PropertyGroup Condition="'$(IncludePdf)' != 'true'">
+    <NoWarn>$(NoWarn);IDE0005</NoWarn>
+  </PropertyGroup>
+
 </Project>

@@ -1,0 +1,123 @@
+name: Release
+
+# Publishing is driven by a tag, so what reaches NuGet is always a specific
+# commit that CI has built. Tag with the package version, e.g. v0.3.0.
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and validate the packages without pushing to NuGet"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            11.0.x
+          dotnet-quality: preview
+
+      # A tag must never publish something that does not pass its own tests.
+      - name: Test
+        run: |
+          dotnet test Aelena.FileApi.sln -c Release
+          dotnet test grpc/Aelena.FileApi.Grpc.sln -c Release
+
+      - name: Pack
+        run: |
+          dotnet pack src/Aelena.FileApi.Core/Aelena.FileApi.Core.csproj -c Release -o ./artifacts
+          dotnet pack src/Aelena.FileApi.Core.Pdf/Aelena.FileApi.Core.Pdf.csproj -c Release -o ./artifacts
+          dotnet pack src/Aelena.FileApi.Cli/Aelena.FileApi.Cli.csproj -c Release -o ./artifacts
+
+      # Publishing an MIT package that drags in AGPL iText would be a licensing
+      # problem for every consumer, so the boundary is checked before the push and
+      # not after.
+      - name: Assert the licence boundary holds
+        run: |
+          python3 - <<'EOF'
+          import glob, re, sys, zipfile
+          expected = {
+              "Aelena.FileApi.Core": ("MIT", False),
+              "Aelena.FileApi.Core.Pdf": ("AGPL-3.0-or-later", True),
+              "Aelena.FileApi.Cli": ("AGPL-3.0-or-later", True),
+          }
+          failures = []
+          for name, (want_licence, may_use_itext) in expected.items():
+              pkg = glob.glob(f"artifacts/{name}.[0-9]*.nupkg")[0]
+              z = zipfile.ZipFile(pkg)
+              nuspec = next(n for n in z.namelist() if n.endswith(".nuspec"))
+              xml = z.read(nuspec).decode("utf-8")
+              deps = sorted(set(re.findall(r'<dependency id="([^"]+)"', xml)))
+              licence = re.search(r'<license type="expression">(.*?)</license>', xml).group(1)
+              has_itext = any("itext" in d.lower() for d in deps)
+              print(f"{name}: licence={licence} itext={has_itext}")
+              if licence != want_licence:
+                  failures.append(f"{name}: expected {want_licence}, found {licence}")
+              if has_itext and not may_use_itext:
+                  failures.append(f"{name} is {licence} but depends on AGPL iText")
+          if failures:
+              sys.exit("::error::" + "; ".join(failures))
+          print("OK: licence boundary intact")
+          EOF
+
+      - name: Verify the tag matches the package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(ls artifacts/Aelena.FileApi.Core.[0-9]*.nupkg | head -1)
+          version=$(basename "$pkg" .nupkg | sed 's/^Aelena.FileApi.Core\.//')
+          echo "tag=$tag package=$version"
+          if [ "$tag" != "$version" ]; then
+            echo "::error::Tag $tag does not match package version $version. Update <Version> in the csproj files."
+            exit 1
+          fi
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: ./artifacts/*.*nupkg
+
+      - name: Push to NuGet
+        if: startsWith(github.ref, 'refs/tags/') && !inputs.dry_run
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "$NUGET_API_KEY" ]; then
+            echo "::error::NUGET_API_KEY is not set. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          # --skip-duplicate makes a re-run of a partially failed release safe.
+          dotnet nuget push "artifacts/*.nupkg" \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/') && !inputs.dry_run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)." \
+            artifacts/*.nupkg

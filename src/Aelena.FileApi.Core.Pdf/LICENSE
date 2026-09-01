@@ -1,0 +1,22 @@
+This project's own source code is offered under the MIT licence, reproduced in
+the LICENSE file at the root of this repository.
+
+HOWEVER, THIS PACKAGE AS A WHOLE IS AGPL-3.0-or-later.
+
+Aelena.FileApi.Core.Pdf depends on iText 7 (https://itextpdf.com/), which is
+licensed under the GNU Affero General Public License version 3, or, at your
+option, under a commercial licence sold by iText Software.
+
+The AGPL is a strong copyleft licence. If you use this package, that obligation
+extends to your own work — and unlike the GPL, the AGPL's obligation is triggered
+by running the software as a network service, not only by distributing it.
+
+  - Full AGPL text: https://www.gnu.org/licenses/agpl-3.0.html
+  - Commercial iText licence: https://itextpdf.com/
+
+If you cannot accept the AGPL and do not hold a commercial iText licence, do not
+use this package. Aelena.FileApi.Core provides everything else in this toolkit —
+DOCX, images, email, hashing, PII detection, readability, text and ZIP — under
+the MIT licence, with no reference to iText, direct or transitive.
+
+See LICENSING.md at the root of this repository for the full explanation.

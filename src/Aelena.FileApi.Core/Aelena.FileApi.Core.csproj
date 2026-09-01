@@ -5,8 +5,8 @@
     <PackageId>Aelena.FileApi.Core</PackageId>
     <Version>0.3.0</Version>
     <Authors>aelena</Authors>
-    <Description>Pure document processing library — PDF, DOCX, image, email, hash, PII, readability, and more. Zero ASP.NET dependencies. Use standalone or behind any host (API, CLI, gRPC).</Description>
-    <PackageTags>document;pdf;docx;image;ocr;hash;pii;readability</PackageTags>
+    <Description>Pure document processing library — DOCX, image, email, hash, PII, readability, text and ZIP. Zero ASP.NET dependencies, MIT licensed, no copyleft dependencies. PDF operations live in Aelena.FileApi.Core.Pdf, which is AGPL because iText 7 is.</Description>
+    <PackageTags>document;docx;image;email;hash;pii;readability;zip</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/aelena/fileapi</RepositoryUrl>
     <IsPackable>true</IsPackable>
@@ -26,10 +26,6 @@
 
     <!-- Templating -->
     <PackageReference Include="Scriban" />
-
-    <!-- PDF -->
-    <PackageReference Include="itext7" />
-    <PackageReference Include="itext7.bouncy-castle-adapter" />
 
     <!-- DOCX / Office -->
     <PackageReference Include="DocumentFormat.OpenXml" />

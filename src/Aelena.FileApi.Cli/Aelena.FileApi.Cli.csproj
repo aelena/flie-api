@@ -6,13 +6,48 @@
     <AssemblyName>fileapi</AssemblyName>
   </PropertyGroup>
 
+  <!--
+    Shipped as a .NET global tool: `dotnet tool install -g Aelena.FileApi.Cli`
+    puts `fileapi` on the PATH. This is the idiomatic route for a .NET CLI —
+    cross-platform, no installer to build, and it reuses the NuGet pipeline the
+    libraries already use. It does require the .NET runtime on the target
+    machine; a self-contained executable would be needed for winget or
+    Chocolatey, which only handle applications rather than packages.
+  -->
+  <PropertyGroup>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>fileapi</ToolCommandName>
+    <PackageId>Aelena.FileApi.Cli</PackageId>
+    <Title>FileApi CLI</Title>
+    <Version>0.3.0</Version>
+    <Authors>aelena</Authors>
+    <Description>Command-line document processing: PDF, DOCX, images, email, hashing, PII detection, readability and ZIP inspection. Installs the `fileapi` command.
+
+IMPORTANT LICENSING NOTE: this tool includes PDF support via Aelena.FileApi.Core.Pdf, which depends on iText 7 under the AGPL, so the tool as a whole is AGPL. The library without PDF, Aelena.FileApi.Core, is MIT.</Description>
+    <PackageTags>cli;dotnet-tool;pdf;docx;image;hash;pii;document</PackageTags>
+    <!-- AGPL, following Aelena.FileApi.Core.Pdf and therefore iText 7. -->
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <PackageProjectUrl>https://github.com/aelena/file-api</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/aelena/file-api</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Aelena.FileApi.Core\Aelena.FileApi.Core.csproj" />
+    <ProjectReference Include="..\Aelena.FileApi.Core.Pdf\Aelena.FileApi.Core.Pdf.csproj" Condition="'$(IncludePdf)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.CommandLine" />
     <PackageReference Include="Spectre.Console" />
+  </ItemGroup>
+
+
+  <!-- Dropped by -p:IncludePdf=false; see Directory.Build.props. -->
+  <ItemGroup Condition="'$(IncludePdf)' != 'true'">
+    <Compile Remove="Commands\PdfCommand.cs" />
   </ItemGroup>
 
 </Project>

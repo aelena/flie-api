@@ -21,6 +21,19 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
+  <!--
+    PDF support is AGPL, because iText 7 is. Everything else in this repository
+    is MIT. Building with -p:IncludePdf=false drops the PDF projects, endpoints
+    and commands entirely, producing a deployable with no copyleft code in it —
+    so a cloner who cannot accept the AGPL has a supported way out rather than
+    having to delete code by hand. CI publishes both ways and asserts that the
+    opt-out output contains no iText assembly.
+  -->
+  <PropertyGroup>
+    <IncludePdf Condition="'$(IncludePdf)' == ''">true</IncludePdf>
+    <DefineConstants Condition="'$(IncludePdf)' == 'true'">$(DefineConstants);INCLUDE_PDF</DefineConstants>
+  </PropertyGroup>
+
   <!-- Analyzers: the whole ruleset, not just the default subset. -->
   <PropertyGroup>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>

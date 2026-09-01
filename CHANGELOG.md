@@ -96,7 +96,27 @@ restore before a line of C# was read.
 - `ZipService` caught failures from the `ZipArchive` constructor only, so an
   archive with a good header and a damaged central directory escaped as a `500`.
 
+### Changed — licensing
+
+- **PDF moved into its own package, `Aelena.FileApi.Core.Pdf`, licensed
+  AGPL-3.0-or-later.** `Aelena.FileApi.Core` declared MIT while depending on
+  iText 7, which is AGPL with `requireLicenseAcceptance`. Publishing that would
+  have told consumers they had permissive terms while pulling copyleft code into
+  their build. `Core` now has no reference to iText, direct or transitive, and CI
+  asserts it by inspecting the packed `.nuspec` on every push.
+- **`-p:IncludePdf=false` builds the repository without the AGPL part.** A clone
+  contains everything, so the package split alone does not help someone who clones.
+  The switch drops the project reference, the `/pdf/*` endpoints, the `fileapi pdf`
+  commands and the PDF gRPC methods; the published output contains no iText
+  assembly at all. CI builds, tests and publishes both ways and fails if iText
+  appears in the opt-out output.
+- `LICENSING.md` documents which package is which, what the AGPL means for a
+  network service, and how to opt out; the README leads with it.
+- **The CLI is packaged as a .NET global tool**: `dotnet tool install -g
+  Aelena.FileApi.Cli` puts `fileapi` on the PATH. It carries PDF, so it is AGPL.
+
 ### Changed
+
 
 - **Retargeted to .NET 10 / C# 14**, and multi-targeted `net10.0;net11.0` — both
   build and test green. `publish` and `run` need `-f`; see the README.
@@ -128,7 +148,16 @@ restore before a line of C# was read.
 
 ### Added
 
+- GitHub Actions: CI builds and tests on Linux and Windows across both target
+  frameworks, packs all three packages, asserts the MIT/AGPL boundary, builds the
+  Docker image, and runs the MIT-only configuration. A tag-driven release workflow
+  packs, re-checks the licence boundary, verifies the tag matches the package
+  version, and publishes to NuGet.
+
 - `ErrorContractTests`, `ShareAccessTests`, and `JwtCookieAuthTests` — the last
   covering a component that had no tests at all, despite being the only thing
   between a request and an identity.
-- Test count: **223 → 298**, run against both target frameworks.
+- Test count: **223 → 298 distinct tests**. Because every project multi-targets,
+  `dotnet test` on the main solution reports **580 passing** — 290 tests run once
+  on net10.0 and once on net11.0. The gRPC solution adds 8 more, so 596 executions
+  in total.

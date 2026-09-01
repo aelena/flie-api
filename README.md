@@ -1,22 +1,88 @@
 # FileApi — Document Processing & AI Analysis Platform
 
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
-[![Tests](https://img.shields.io/badge/tests-298%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-580%20passing-brightgreen)]()
 [![.NET](https://img.shields.io/badge/.NET-10.0%20%7C%2011.0-blue)]()
-[![License](https://img.shields.io/badge/license-MIT-green)]()
+[![Core](https://img.shields.io/badge/Core-MIT-green)]()
+[![Core.Pdf](https://img.shields.io/badge/Core.Pdf-AGPL--3.0-red)]()
 
 A comprehensive .NET 10 / C# 14 document processing platform. Four ports — **HTTP API**, **rich CLI**, **gRPC service**, and **NuGet library** — all powered by the same pure Core library with zero ASP.NET dependencies.
 
 Builds and tests green on **.NET 10 (LTS)** and **.NET 11 preview**.
 
+## ⚠️ Licensing — read this before taking a dependency
+
+**This repository ships two libraries under two different licences, and the difference matters.**
+
+| Package | Licence | Contains | Safe for closed-source use? |
+|---------|---------|----------|------------------------------|
+| `Aelena.FileApi.Core` | **MIT** | DOCX, images, email, hashing, PII, readability, text, ZIP, share links, jobs | **Yes** |
+| `Aelena.FileApi.Core.Pdf` | **AGPL-3.0-or-later** | All PDF operations | **No** — see below |
+| `Aelena.FileApi.Cli` (`fileapi` tool) | **AGPL-3.0-or-later** | Everything, including PDF | **No** — see below |
+
+`Aelena.FileApi.Core.Pdf` is built on [iText 7](https://itextpdf.com/), which is
+licensed under the **AGPL**. The AGPL is a strong copyleft licence: if you use it in
+a network-facing application, that obligation extends to **your** application's
+source. iText sells a commercial licence if that is not acceptable — that is a
+matter between you and iText, and installing this package does not grant it.
+
+PDF lives in its own package precisely so that everything else can stay MIT.
+**If you do not need PDF, depend on `Aelena.FileApi.Core` alone and no copyleft
+code enters your build.** The split is enforced by the project structure: `Core`
+has no reference to iText, direct or transitive.
+
+```bash
+# MIT, no copyleft anywhere in the graph
+dotnet add package Aelena.FileApi.Core
+
+# AGPL — only if you understand and accept the obligation
+dotnet add package Aelena.FileApi.Core.Pdf
+```
+
+The self-hosted **HTTP API and gRPC service** in this repository include PDF by
+default, so a deployment of either is likewise subject to the AGPL.
+
+### If you clone this repository
+
+The NuGet split does not help you here — a clone contains everything, including
+the AGPL part. So there is a supported way to build without it:
+
+```bash
+dotnet build   -p:IncludePdf=false
+dotnet publish src/Aelena.FileApi.Api -f net10.0 -c Release -p:IncludePdf=false
+```
+
+`-p:IncludePdf=false` removes the `Aelena.FileApi.Core.Pdf` project reference, the
+`/pdf/*` endpoints, the `fileapi pdf` command group, and the PDF gRPC methods. The
+result contains **no iText assembly at all** — not a disabled feature flag, an
+absent dependency. What remains is MIT throughout.
+
+| | Default build | `-p:IncludePdf=false` |
+|---|---|---|
+| Effective licence | AGPL-3.0-or-later | MIT |
+| `/pdf/*` endpoints | 30+ routes | absent (404) |
+| `fileapi pdf …` | available | absent from `--help` |
+| gRPC PDF methods | available | `Unimplemented` status |
+| Everything else | available | available |
+| iText in output | yes | **no** |
+
+CI publishes both ways on every push and fails if an iText assembly appears in the
+opt-out output, so this stays true rather than drifting.
+
+Full detail, including the terms of every dependency, is in
+**[LICENSING.md](LICENSING.md)**.
+
 ## Architecture
 
 ```
-                    ┌─────────────────┐
-                    │  Core Library   │  ← NuGet: Aelena.FileApi.Core
-                    │  (static ops,   │     Zero ASP.NET dependencies
-                    │   thread-safe)  │     All business logic here
-                    └────────┬────────┘
+         ┌──────────────────┐   ┌────────────────────────┐
+         │  Core (MIT)      │◄──│  Core.Pdf (AGPL)       │
+         │  DOCX, images,   │   │  PDF only — iText 7    │
+         │  email, hash,    │   │  Separated so that     │
+         │  PII, text, zip  │   │  Core stays MIT        │
+         └────────┬─────────┘   └───────────┬────────────┘
+                  │                         │
+                  └───────────┬─────────────┘
                              │
               ┌──────────────┼──────────────┐
               │              │              │
@@ -150,8 +216,19 @@ dotnet build -p:TargetFrameworks=net10.0
 
 ```bash
 dotnet test
-# 298 tests on each framework: unit + endpoint + concurrency + error-contract
 ```
+
+`dotnet test` reports **580 passing**. That is 290 distinct tests — 193 unit plus
+97 endpoint — run once against each target framework:
+
+| Suite | Tests | Frameworks | Executions |
+|-------|-------|-----------|-----------|
+| `Aelena.FileApi.Tests` (unit, concurrency) | 193 | net10.0, net11.0 | 386 |
+| `Aelena.FileApi.Api.Tests` (endpoint, error-contract, auth, share) | 97 | net10.0, net11.0 | 194 |
+| **Main solution total** | **290** | | **580** |
+| `Aelena.FileApi.Grpc.Tests` (separate solution) | 8 | net10.0, net11.0 | 16 |
+
+To run a single framework: `dotnet test -f net10.0`.
 
 ### Build NuGet Package
 
@@ -259,6 +336,9 @@ file-api/
 │   │                              # TxtService, ZipService, ReadabilityService, PiiService,
 │   │                              # EmailService, UserRegex
 │   │
+│   ├── Aelena.FileApi.Core.Pdf/  # AGPL — PDF only, the sole iText consumer
+│   │   └── Services/Pdf/          # PdfService. Kept out of Core so Core is MIT.
+│   │
 │   ├── Aelena.FileApi.Api/       # HTTP wrapper (Minimal APIs)
 │   │   ├── Program.cs             # Top-level: DI, Serilog, OpenTelemetry, all routes
 │   │   ├── Endpoints/             # 22 endpoint files + FormFileExtensions
@@ -285,7 +365,7 @@ file-api/
 
 | Component | Library |
 |-----------|---------|
-| PDF | iText7 9.x (AGPL) |
+| PDF | iText7 9.x (**AGPL** — isolated in `Aelena.FileApi.Core.Pdf`) |
 | DOCX/PPTX | DocumentFormat.OpenXml 3.x |
 | Images | SixLabors.ImageSharp 3.x |
 | Email | MimeKit 4.x |
@@ -319,4 +399,13 @@ own passwords and expiry.
 
 ## License
 
-MIT — see [LICENSE](LICENSE) for details.
+Two licences, by package — see the [licensing section](#️-licensing--read-this-before-taking-a-dependency) above.
+
+- **`Aelena.FileApi.Core`** — MIT, see [LICENSE](LICENSE). No copyleft dependencies.
+- **`Aelena.FileApi.Core.Pdf`** and the **`fileapi` CLI** — AGPL-3.0-or-later,
+  inherited from iText 7. The repository's own source is MIT; the AGPL obligation
+  comes from the dependency, and applies to anything that ships or serves it.
+
+Other dependencies keep their own terms. Notably `SixLabors.ImageSharp` is under the
+Six Labors Split License: free for open-source and small-business use, commercial
+licence otherwise.

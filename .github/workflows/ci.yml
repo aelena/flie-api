@@ -1,0 +1,179 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # One SDK per target framework. .NET 11 is preview; when it is unavailable
+      # the job fails loudly rather than quietly building only net10.0.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            11.0.x
+          dotnet-quality: preview
+
+      - name: Restore
+        run: |
+          dotnet restore Aelena.FileApi.sln
+          dotnet restore grpc/Aelena.FileApi.Grpc.sln
+
+      # TreatWarningsAsErrors is on, so this is also the lint step.
+      - name: Build
+        run: |
+          dotnet build Aelena.FileApi.sln -c Release --no-restore
+          dotnet build grpc/Aelena.FileApi.Grpc.sln -c Release --no-restore
+
+      # Runs each suite once per target framework: net10.0 and net11.0.
+      - name: Test
+        run: >
+          dotnet test Aelena.FileApi.sln -c Release --no-build
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults
+
+      - name: Test (gRPC)
+        run: >
+          dotnet test grpc/Aelena.FileApi.Grpc.sln -c Release --no-build
+          --logger "trx;LogFileName=grpc-test-results.trx"
+          --results-directory ./TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: ./TestResults
+          retention-days: 7
+
+  packages:
+    name: packages
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            11.0.x
+          dotnet-quality: preview
+
+      - name: Pack
+        run: |
+          dotnet pack src/Aelena.FileApi.Core/Aelena.FileApi.Core.csproj -c Release -o ./artifacts
+          dotnet pack src/Aelena.FileApi.Core.Pdf/Aelena.FileApi.Core.Pdf.csproj -c Release -o ./artifacts
+          dotnet pack src/Aelena.FileApi.Cli/Aelena.FileApi.Cli.csproj -c Release -o ./artifacts
+
+      # The MIT package must never acquire an iText dependency. PDF lives in a
+      # separate AGPL package for exactly this reason, and a stray ProjectReference
+      # would silently pull copyleft code into every consumer of the MIT one — so
+      # the boundary is asserted in CI rather than trusted to review.
+      - name: Assert Aelena.FileApi.Core carries no iText dependency
+        run: |
+          python3 - <<'EOF'
+          import glob, re, sys, zipfile
+          pkg = glob.glob("artifacts/Aelena.FileApi.Core.[0-9]*.nupkg")[0]
+          z = zipfile.ZipFile(pkg)
+          nuspec = next(n for n in z.namelist() if n.endswith(".nuspec"))
+          xml = z.read(nuspec).decode("utf-8")
+          deps = sorted(set(re.findall(r'<dependency id="([^"]+)"', xml)))
+          licence = re.search(r'<license type="expression">(.*?)</license>', xml).group(1)
+          offenders = [d for d in deps if "itext" in d.lower()]
+          print(f"{pkg}\n  licence: {licence}\n  deps: {', '.join(deps)}")
+          if licence != "MIT":
+              sys.exit(f"::error::Expected MIT, found {licence}")
+          if offenders:
+              sys.exit(f"::error::MIT package depends on AGPL iText: {offenders}")
+          print("OK: MIT package is free of iText")
+          EOF
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: ./artifacts/*.*nupkg
+          retention-days: 7
+
+  # A cloner who cannot accept the AGPL is told to build -p:IncludePdf=false.
+  # That promise is only worth making if it is checked, so it is built and the
+  # published output inspected for an iText assembly on every push.
+  no-pdf:
+    name: MIT-only build (IncludePdf=false)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            11.0.x
+          dotnet-quality: preview
+
+      - name: Build without PDF
+        run: dotnet build Aelena.FileApi.sln -c Release -p:IncludePdf=false
+
+      # The PDF endpoint tests are compiled out in this configuration; the rest
+      # must still pass, so the opt-out is a supported build and not a broken one.
+      - name: Test without PDF
+        run: dotnet test Aelena.FileApi.sln -c Release --no-build -p:IncludePdf=false
+
+      - name: Publish the API and CLI without PDF
+        run: |
+          dotnet publish src/Aelena.FileApi.Api -f net10.0 -c Release -p:IncludePdf=false -o ./out/api
+          dotnet publish src/Aelena.FileApi.Cli -f net10.0 -c Release -p:IncludePdf=false -o ./out/cli
+
+      - name: Assert no iText assembly reached the output
+        run: |
+          found=$(find ./out -iname '*itext*' -o -iname '*bouncycastle*' | head -20)
+          if [ -n "$found" ]; then
+            echo "::error::IncludePdf=false still shipped AGPL assemblies:"
+            echo "$found"
+            exit 1
+          fi
+          echo "OK: MIT-only output contains no iText or BouncyCastle assembly"
+
+  docker:
+    name: docker
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The image pins the LTS runtime and publishes -f net10.0; this catches a
+      # Dockerfile that has drifted from the project layout.
+      - name: Build image
+        run: docker build -f src/Aelena.FileApi.Api/Dockerfile -t fileapi:ci .

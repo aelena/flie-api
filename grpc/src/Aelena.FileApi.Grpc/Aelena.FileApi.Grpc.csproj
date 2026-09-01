@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Aelena.FileApi.Core\Aelena.FileApi.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Aelena.FileApi.Core.Pdf\Aelena.FileApi.Core.Pdf.csproj" Condition="'$(IncludePdf)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>
@@ -25,6 +26,12 @@
       off to tolerate.
     -->
     <Protobuf Include="Protos\fileapi.proto" GrpcServices="Both" />
+  </ItemGroup>
+
+
+  <!-- Dropped by -p:IncludePdf=false; see Directory.Build.props. -->
+  <ItemGroup Condition="'$(IncludePdf)' != 'true'">
+    <Compile Remove="Services\FileGrpcService.Pdf.cs" />
   </ItemGroup>
 
 </Project>

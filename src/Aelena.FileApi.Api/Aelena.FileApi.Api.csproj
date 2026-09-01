@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Aelena.FileApi.Core\Aelena.FileApi.Core.csproj" />
+    <ProjectReference Include="..\Aelena.FileApi.Core.Pdf\Aelena.FileApi.Core.Pdf.csproj" Condition="'$(IncludePdf)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,6 +22,12 @@
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
+  </ItemGroup>
+
+
+  <!-- Dropped by -p:IncludePdf=false; see Directory.Build.props. -->
+  <ItemGroup Condition="'$(IncludePdf)' != 'true'">
+    <Compile Remove="Endpoints\PdfEndpoints.cs" />
   </ItemGroup>
 
 </Project>

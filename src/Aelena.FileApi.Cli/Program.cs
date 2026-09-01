@@ -3,7 +3,9 @@ using Aelena.FileApi.Cli.Commands;
 
 var root = new RootCommand("fileapi — Document processing CLI powered by Aelena.FileApi.Core")
 {
+#if INCLUDE_PDF
     PdfCommand.Create(),
+#endif
     DocxCommand.Create(),
     ImageCommand.Create(),
     HashCommand.Create(),

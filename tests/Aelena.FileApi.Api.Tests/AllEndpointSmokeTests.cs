@@ -37,17 +37,6 @@ public class AllEndpointSmokeTests(WebApplicationFactory<Program> factory) : Fil
         return form;
     }
 
-    private static byte[] MiniPdf()
-    {
-        using var ms = new MemoryStream();
-        using var w = new PdfWriter(ms);
-        using var pdfDoc = new PdfDocument(w);
-        using var layout = new iText.Layout.Document(pdfDoc);
-        layout.Add(new iText.Layout.Element.Paragraph("Hello PDF world. The quick brown fox."));
-        layout.Close();
-        return ms.ToArray();
-    }
-
     private static byte[] MiniDocx()
     {
         using var ms = new MemoryStream();
@@ -83,6 +72,19 @@ public class AllEndpointSmokeTests(WebApplicationFactory<Program> factory) : Fil
 
     private static byte[] MiniEml() => Encoding.UTF8.GetBytes(
         "From: a@b.com\r\nTo: c@d.com\r\nSubject: Test\r\n\r\nBody text.");
+
+#if INCLUDE_PDF
+
+    private static byte[] MiniPdf()
+    {
+        using var ms = new MemoryStream();
+        using var w = new PdfWriter(ms);
+        using var pdfDoc = new PdfDocument(w);
+        using var layout = new iText.Layout.Document(pdfDoc);
+        layout.Add(new iText.Layout.Element.Paragraph("Hello PDF world. The quick brown fox."));
+        layout.Close();
+        return ms.ToArray();
+    }
 
     // ── PDF ──────────────────────────────────────────────────────────────
 
@@ -128,6 +130,7 @@ public class AllEndpointSmokeTests(WebApplicationFactory<Program> factory) : Fil
         var r = await Client.PostAsync("/pdf/encrypt?userPassword=test123", form);
         r.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+#endif
 
     // ── DOCX ─────────────────────────────────────────────────────────────
 

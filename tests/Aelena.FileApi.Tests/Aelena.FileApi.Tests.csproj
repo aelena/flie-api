@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Aelena.FileApi.Core\Aelena.FileApi.Core.csproj" />
+    <ProjectReference Include="..\..\src\Aelena.FileApi.Core.Pdf\Aelena.FileApi.Core.Pdf.csproj" />
   </ItemGroup>
 
   <ItemGroup>

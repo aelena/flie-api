@@ -123,7 +123,9 @@ try
     app.MapGroup("/redact").WithTags("Redact").MapRedactEndpoints();
 
     // ── Phase 3 endpoints ───────────────────────────────────────────────
+#if INCLUDE_PDF
     app.MapGroup("/pdf").WithTags("PDF").MapPdfEndpoints();
+#endif
 
     // ── Phase 4 endpoints ───────────────────────────────────────────────
     app.MapGroup("/docx").WithTags("DOCX").MapDocxEndpoints();

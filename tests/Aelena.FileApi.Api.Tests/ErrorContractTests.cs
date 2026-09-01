@@ -32,6 +32,11 @@ public class ErrorContractTests(WebApplicationFactory<Program> factory) : FileAp
     private static MultipartFormDataContent TextUpload(string text, string fileName = "sample.txt") =>
         Upload(Encoding.UTF8.GetBytes(text), fileName);
 
+    // PDF routes only exist when the AGPL PDF package is included, so these are
+    // compiled out of the MIT-only build (-p:IncludePdf=false) rather than failing
+    // against endpoints that are deliberately absent.
+#if INCLUDE_PDF
+
     /// <summary>A one-page PDF, minimal but genuinely parseable.</summary>
     private static byte[] MinimalPdf()
     {
@@ -146,19 +151,23 @@ public class ErrorContractTests(WebApplicationFactory<Program> factory) : FileAp
         response.Content.Headers.ContentType?.MediaType.Should().NotBe("application/pdf");
     }
 
+#endif
+
     // ── Problem Details shape ────────────────────────────────────────────
 
     [Fact]
     public async Task Failures_UseProblemJsonAndCarryTheRequestPath()
     {
-        using var form = Upload(Encoding.UTF8.GetBytes("nope"), "renamed.pdf");
+        // Deliberately not a /pdf route: this asserts the shape of every error
+        // response, and must keep running in the MIT-only build where PDF is absent.
+        using var form = TextUpload("hello world");
 
-        var response = await Client.PostAsync("/pdf/metadata", form);
+        var response = await Client.PostAsync("/search?query=a&pattern=b", form);
 
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
 
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetail>();
-        problem!.Instance.Should().Be("/pdf/metadata");
+        problem!.Instance.Should().Be("/search");
         problem.Status.Should().Be((int)response.StatusCode);
     }
 }
