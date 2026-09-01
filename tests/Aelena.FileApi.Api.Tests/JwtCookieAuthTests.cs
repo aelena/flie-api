@@ -4,7 +4,7 @@ using System.Text;
 using Aelena.FileApi.Api.Auth;
 using Aelena.FileApi.Api.Configuration;
 using Aelena.FileApi.Core.Errors;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
 using Xunit;

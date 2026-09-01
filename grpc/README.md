@@ -32,7 +32,7 @@ A gRPC service exposing the compute-heavy, binary-intensive operations from `Ael
 ```bash
 cd grpc/
 dotnet build
-dotnet run --project src/Aelena.FileApi.Grpc
+dotnet run --project src/Aelena.FileApi.Grpc -f net10.0
 # Listening on https://localhost:5201
 ```
 

@@ -48,6 +48,8 @@ public sealed class AuditLogMiddleware(RequestDelegate next, ILogger<AuditLogMid
                 ? $"HTTP {ctx.Response.StatusCode}"
                 : null;
 
+            var elapsedMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+
             LogMessages.Audit(
                 log,
                 ctx.Request.Method,
@@ -55,7 +57,7 @@ public sealed class AuditLogMiddleware(RequestDelegate next, ILogger<AuditLogMid
                 ctx.Items[FileNameItem] as string,
                 ctx.Items[FileSizeItem] as long? ?? ctx.Request.ContentLength,
                 ctx.Response.StatusCode,
-                Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+                elapsedMs,
                 failure);
         }
     }

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO.Compression;
 using System.Text;
@@ -7,20 +8,16 @@ using Aelena.FileApi.Core.Models;
 using Aelena.FileApi.Core.Services.Common;
 using iText.IO.Font.Constants;
 using iText.Kernel.Colors;
-using iText.Kernel.Crypto;
 using iText.Kernel.Font;
 using iText.Kernel.Geom;
 using iText.Kernel.Pdf;
 using Path = System.IO.Path;
-using iText.Kernel.Pdf.Annot;
 using iText.Kernel.Pdf.Canvas;
 using iText.Kernel.Pdf.Canvas.Parser;
 using iText.Kernel.Pdf.Canvas.Parser.Listener;
 using iText.Kernel.Pdf.Extgstate;
 using iText.Kernel.Pdf.Navigation;
-using iText.Kernel.Pdf.Xobject;
 using iText.Kernel.Utils;
-using iText.Forms;
 using iText.Forms.Fields;
 
 namespace Aelena.FileApi.Core.Services.Pdf;
@@ -31,7 +28,7 @@ namespace Aelena.FileApi.Core.Services.Pdf;
 /// and returns immutable records or value tuples — no streams, no <c>IFormFile</c>.
 /// Thread-safe by design: no shared mutable state.
 /// </summary>
-public static class PdfService
+public static partial class PdfService
 {
     // ────────────────────────────── Read Operations ──────────────────────────────
 
@@ -201,7 +198,7 @@ public static class PdfService
             {
                 var opts = choiceField.GetOptions();
                 if (opts is { } o && o.Size() > 0)
-                    options = o.Select(x => x.ToString() ?? "").ToList();
+                    options = [.. o.Select(x => x.ToString() ?? "")];
             }
 
             int? page = null;
@@ -342,7 +339,7 @@ public static class PdfService
         var totalPages = doc.GetNumberOfPages();
         var indices = pages is not null
             ? PageRangeParser.Parse(pages, totalPages)
-            : Enumerable.Range(0, totalPages).ToList();
+            : [.. Enumerable.Range(0, totalPages)];
 
         var result = indices
             .Select(i => new PageContent(i + 1, ExtractPageText(doc.GetPage(i + 1))))
@@ -389,7 +386,7 @@ public static class PdfService
         var totalPages = doc.GetNumberOfPages();
         var indices = pages is not null
             ? PageRangeParser.Parse(pages, totalPages)
-            : Enumerable.Range(0, totalPages).ToList();
+            : [.. Enumerable.Range(0, totalPages)];
 
         var md = new StringBuilder();
         foreach (var idx in indices)
@@ -450,15 +447,26 @@ public static class PdfService
     }
 
     /// <summary>
-    /// Extract tables from a PDF using heuristic line-based detection.
+    /// Not implemented: always throws <see cref="FileApiException"/> with status 501.
     /// </summary>
-    public static PdfTableResponse ExtractTables(byte[] data, string fileName, string? pages = null)
-    {
-        // TODO: Implement proper table detection with layout analysis.
-        using var reader = SafeReader(data);
-        using var doc = OpenDocument(reader);
-        return new PdfTableResponse(fileName, doc.GetNumberOfPages(), 0, []);
-    }
+    /// <param name="data">Raw PDF bytes.</param>
+    /// <param name="fileName">Original file name.</param>
+    /// <param name="pages">Optional page range.</param>
+    /// <exception cref="FileApiException">Always, with status 501.</exception>
+    /// <remarks>
+    /// This opened the document, ignored it, and returned a response reporting zero
+    /// tables and an empty list — with a 200. A caller had no way to tell "this PDF
+    /// contains no tables" from "table detection was never written", which is the
+    /// worse of the two answers to get silently. Refusing is honest; the heuristic
+    /// the summary once promised needs real layout analysis.
+    /// </remarks>
+    [SuppressMessage("Style", "IDE0060:Remove unused parameter",
+        Justification = "Signature is the shipped public API; the method is a declared 501 stub.")]
+    public static PdfTableResponse ExtractTables(byte[] data, string fileName, string? pages = null) =>
+        throw new FileApiException(501,
+            "PDF table extraction is not implemented. Use /pdf/extract-text or "
+            + "/pdf/extract-markdown, which preserve the document's text layout.",
+            title: "Not Implemented");
 
     /// <summary>
     /// Remove owner-password restrictions from a PDF without needing the owner password.
@@ -584,7 +592,7 @@ public static class PdfService
         var totalPages = doc.GetNumberOfPages();
         var indices = pages is not null
             ? PageRangeParser.Parse(pages, totalPages)
-            : Enumerable.Range(0, totalPages).ToList();
+            : [.. Enumerable.Range(0, totalPages)];
 
         foreach (var idx in indices)
         {
@@ -830,9 +838,20 @@ public static class PdfService
     /// <param name="dpi">Target DPI for images (reserved for future image resampling).</param>
     /// <returns>Tuple of (file name, compressed bytes, original size, compressed size).</returns>
     /// <remarks>
-    /// TODO: Implement per-image resampling at the target quality/DPI for more aggressive
-    /// compression. Currently applies iText stream-level compression only.
+    /// <para>
+    /// <paramref name="imageQuality"/> and <paramref name="dpi"/> are accepted but not
+    /// applied: this compresses object streams and the cross-reference table, and does
+    /// not resample embedded images. Unlike the table and redaction stubs the operation
+    /// does do what its name says and returns a genuinely smaller file, so it answers
+    /// normally rather than 501 — but a caller asking for quality 10 should not expect
+    /// image recompression.
+    /// </para>
+    /// <para>
+    /// Implementing them means decoding each image XObject, resampling, and re-encoding.
+    /// </para>
     /// </remarks>
+    [SuppressMessage("Style", "IDE0060:Remove unused parameter",
+        Justification = "Signature is the shipped public API; image resampling is documented as not applied.")]
     public static (string FileName, byte[] Data, long OriginalSize, long CompressedSize) CompressPdf(
         byte[] data, string fileName, int imageQuality, int dpi)
     {
@@ -1084,6 +1103,13 @@ public static class PdfService
         + "Check that it is not truncated, and that it is really a PDF rather than another "
         + "format that has been given a .pdf name.";
 
+    /// <summary>
+    /// A run of three or more spaces, the usual sign of a column boundary in
+    /// text extracted from a table.
+    /// </summary>
+    [GeneratedRegex(@"\s{3,}")]
+    private static partial Regex ColumnGap();
+
     /// <summary>Extract text from a single page using <see cref="LocationTextExtractionStrategy"/>.</summary>
     private static string ExtractPageText(PdfPage page) =>
         PdfTextExtractor.GetTextFromPage(page, new LocationTextExtractionStrategy());
@@ -1119,7 +1145,7 @@ public static class PdfService
         {
             var isTabular = line.Count(c => c == '\t') >= 2
                             || line.Count(c => c == '|') >= 2
-                            || Regex.Matches(line, @"\s{3,}").Count >= 2;
+                            || ColumnGap().Count(line) >= 2;
 
             if (isTabular)
             {

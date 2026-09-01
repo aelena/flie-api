@@ -1,6 +1,6 @@
 using Aelena.FileApi.Core.Errors;
 using Aelena.FileApi.Core.Services.Image;
-using FluentAssertions;
+using AwesomeAssertions;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;

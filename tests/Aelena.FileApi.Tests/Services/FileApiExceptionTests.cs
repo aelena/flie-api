@@ -1,5 +1,5 @@
 using Aelena.FileApi.Core.Errors;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace Aelena.FileApi.Tests.Services;

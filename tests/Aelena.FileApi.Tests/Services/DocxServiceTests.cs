@@ -3,7 +3,7 @@ using Aelena.FileApi.Core.Services.Docx;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace Aelena.FileApi.Tests.Services;

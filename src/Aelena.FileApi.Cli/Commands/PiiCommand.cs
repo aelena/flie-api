@@ -11,9 +11,7 @@ public static class PiiCommand
 {
     public static Command Create()
     {
-        var cmd = new Command("pii", "PII detection — scan for personal data");
-        cmd.Add(Detect());
-        return cmd;
+        return new Command("pii", "PII detection — scan for personal data") { Detect() };
     }
 
     private static Command Detect()

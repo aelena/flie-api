@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using Aelena.FileApi.Core.Models;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -23,9 +23,10 @@ public class ErrorContractTests(WebApplicationFactory<Program> factory) : FileAp
 {
     private static MultipartFormDataContent Upload(byte[] content, string fileName)
     {
-        var form = new MultipartFormDataContent();
-        form.Add(new ByteArrayContent(content), "file", fileName);
-        return form;
+        return new MultipartFormDataContent
+        {
+            { new ByteArrayContent(content), "file", fileName }
+        };
     }
 
     private static MultipartFormDataContent TextUpload(string text, string fileName = "sample.txt") =>

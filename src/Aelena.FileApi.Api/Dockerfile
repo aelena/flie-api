@@ -13,11 +13,13 @@ COPY src/Aelena.FileApi.Api/Aelena.FileApi.Api.csproj src/Aelena.FileApi.Api/
 
 RUN dotnet restore src/Aelena.FileApi.Api/Aelena.FileApi.Api.csproj
 
-# Copy everything and publish
+# Copy everything and publish.
+# -f is required: the projects multi-target net10.0 and net11.0, and this image
+# ships the LTS runtime.
 COPY src/ src/
 COPY prompts/ prompts/
 RUN dotnet publish src/Aelena.FileApi.Api/Aelena.FileApi.Api.csproj \
-    -c Release -o /app/publish --no-restore
+    -f net10.0 -c Release -o /app/publish --no-restore
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-bookworm-slim AS runtime

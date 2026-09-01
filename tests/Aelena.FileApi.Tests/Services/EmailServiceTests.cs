@@ -1,7 +1,7 @@
 using System.Text;
 using Aelena.FileApi.Core.Errors;
 using Aelena.FileApi.Core.Services.Common;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace Aelena.FileApi.Tests.Services;

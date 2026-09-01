@@ -9,20 +9,12 @@ namespace Aelena.FileApi.Core.Services.Llm;
 /// conditionals like <c>{% if tone == "legal" %}</c>, etc.
 /// Thread-safe — templates are parsed once and cached.
 /// </summary>
-public sealed class PromptRenderer
+/// <param name="promptsDir">Path to the prompts directory (default: "prompts/" relative to app root).</param>
+public sealed class PromptRenderer(string? promptsDir = null)
 {
-    private readonly string _promptsDir;
-    private readonly Dictionary<string, Template> _cache = new();
-    private readonly object _lock = new();
-
-    /// <summary>
-    /// Creates a new renderer that loads templates from the specified directory.
-    /// </summary>
-    /// <param name="promptsDir">Path to the prompts directory (default: "prompts/" relative to app root).</param>
-    public PromptRenderer(string? promptsDir = null)
-    {
-        _promptsDir = promptsDir ?? Path.Combine(AppContext.BaseDirectory, "prompts");
-    }
+    private readonly string _promptsDir = promptsDir ?? Path.Combine(AppContext.BaseDirectory, "prompts");
+    private readonly Dictionary<string, Template> _cache = [];
+    private readonly Lock _lock = new();
 
     /// <summary>
     /// Render a named template with the given variables.

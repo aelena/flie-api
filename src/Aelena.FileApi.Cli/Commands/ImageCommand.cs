@@ -9,15 +9,10 @@ public static class ImageCommand
 {
     public static Command Create()
     {
-        var cmd = new Command("image", "Image operations — resize, rotate, crop, convert, blur, etc.");
-        cmd.Add(Exif());
-        cmd.Add(Resize());
-        cmd.Add(Rotate());
-        cmd.Add(Convert());
-        cmd.Add(Grayscale());
-        cmd.Add(Blur());
-        cmd.Add(Compress());
-        return cmd;
+        return new Command("image", "Image operations — resize, rotate, crop, convert, blur, etc.")
+        {
+            Exif(), Resize(), Rotate(), Convert(), Grayscale(), Blur(), Compress()
+        };
     }
 
     private static Command Exif()

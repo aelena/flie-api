@@ -1,6 +1,6 @@
 using System.Text;
 using Aelena.FileApi.Core.Services.Common;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace Aelena.FileApi.Tests.Services;
@@ -26,7 +26,7 @@ public class TxtServiceTests
     [Fact]
     public void GetMetrics_EmptyText_ReturnsZeros()
     {
-        var result = TxtService.GetMetrics([],"empty.txt");
+        var result = TxtService.GetMetrics([], "empty.txt");
 
         result.WordCount.Should().Be(0);
         // Empty byte array decodes to empty string, Split('\n') returns [""] which is length 1

@@ -10,17 +10,11 @@ public static class PdfCommand
 {
     public static Command Create()
     {
-        var cmd = new Command("pdf", "PDF operations — metrics, extract text, merge, split, rotate, encrypt, etc.");
-        cmd.Add(Metrics());
-        cmd.Add(ExtractText());
-        cmd.Add(Metadata());
-        cmd.Add(Health());
-        cmd.Add(Merge());
-        cmd.Add(Rotate());
-        cmd.Add(Encrypt());
-        cmd.Add(Decrypt());
-        cmd.Add(Search());
-        return cmd;
+        return new Command("pdf", "PDF operations — metrics, extract text, merge, split, rotate, encrypt, etc.")
+        {
+            Metrics(), ExtractText(), Metadata(), Health(),
+            Merge(), Rotate(), Encrypt(), Decrypt(), Search()
+        };
     }
 
     private static Command Metrics()

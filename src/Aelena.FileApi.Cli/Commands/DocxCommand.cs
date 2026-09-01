@@ -10,12 +10,10 @@ public static class DocxCommand
 {
     public static Command Create()
     {
-        var cmd = new Command("docx", "DOCX operations — metrics, metadata, markdown, health");
-        cmd.Add(Metrics());
-        cmd.Add(Metadata());
-        cmd.Add(Markdown());
-        cmd.Add(Health());
-        return cmd;
+        return new Command("docx", "DOCX operations — metrics, metadata, markdown, health")
+        {
+            Metrics(), Metadata(), Markdown(), Health()
+        };
     }
 
     private static Command Metrics()

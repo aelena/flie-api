@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Aelena.FileApi.Core.Models;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 

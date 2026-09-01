@@ -6,7 +6,13 @@
     restate a TargetFramework or language version.
   -->
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <!--
+      Built and tested against both the current LTS and the next preview, so a
+      regression on either shows up here rather than in someone's upgrade.
+      Set -p:TargetFrameworks=net10.0 to build only the LTS target if the .NET 11
+      SDK is not installed.
+    -->
+    <TargetFrameworks>net10.0;net11.0</TargetFrameworks>
     <LangVersion>14</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

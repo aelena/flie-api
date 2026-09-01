@@ -20,8 +20,8 @@ public static class SummarizeEndpoints
 
         group.MapGet("/{jobId}", (string jobId, InMemoryJobStore<SummarizeJobReport> store) =>
         {
-            var report = store.Get(jobId);
-            if (report is null) throw new FileApiException(404, $"Job {jobId} not found.");
+            var report = store.Get(jobId)
+                ?? throw new FileApiException(404, $"Job {jobId} not found.");
             return report.Status == "processing" ? Results.Accepted(value: report) : Results.Ok(report);
         }).WithName("GetSummarizeResult");
 

@@ -8,18 +8,13 @@ namespace Aelena.FileApi.Core.Services.Jobs;
 /// Used for async comparison, summarization, and batch jobs.
 /// </summary>
 /// <typeparam name="T">The job report type (e.g. ComparisonReport, SummarizeJobReport).</typeparam>
-public sealed class InMemoryJobStore<T> where T : class
+/// <param name="maxItems">
+/// Maximum number of jobs to retain; the oldest are trimmed past this. 0 means unlimited.
+/// </param>
+public sealed class InMemoryJobStore<T>(int maxItems = 1000) where T : class
 {
     private readonly ConcurrentDictionary<string, (T Value, DateTimeOffset Created)> _store = new();
     private readonly Lock _trimGate = new();
-    private readonly int _maxItems;
-
-    /// <summary>
-    /// Creates a new job store with the specified capacity.
-    /// When the store exceeds this capacity, the oldest entries are trimmed.
-    /// </summary>
-    /// <param name="maxItems">Maximum number of jobs to retain (0 = unlimited).</param>
-    public InMemoryJobStore(int maxItems = 1000) => _maxItems = maxItems;
 
     /// <summary>Store or update a job.</summary>
     public void Set(string jobId, T value)
@@ -54,11 +49,11 @@ public sealed class InMemoryJobStore<T> where T : class
     /// </remarks>
     private void TrimIfNeeded()
     {
-        if (_maxItems <= 0 || _store.Count <= _maxItems) return;
+        if (maxItems <= 0 || _store.Count <= maxItems) return;
 
         lock (_trimGate)
         {
-            var excess = _store.Count - _maxItems;
+            var excess = _store.Count - maxItems;
             if (excess <= 0) return;
 
             var oldest = _store

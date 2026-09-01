@@ -133,7 +133,7 @@ docker-compose up --build
 ```bash
 dotnet restore
 dotnet build
-dotnet run --project src/Aelena.FileApi.Api
+dotnet run --project src/Aelena.FileApi.Api -f net10.0
 ```
 
 ### Run Tests
@@ -157,10 +157,10 @@ The `fileapi` CLI provides direct access to all Core operations from the termina
 
 ```bash
 # Run via dotnet
-dotnet run --project src/Aelena.FileApi.Cli -- <command> [options]
+dotnet run --project src/Aelena.FileApi.Cli -f net10.0 -- <command> [options]
 
 # Or build and use directly
-dotnet build src/Aelena.FileApi.Cli -c Release
+dotnet build src/Aelena.FileApi.Cli -c Release -f net10.0
 ./src/Aelena.FileApi.Cli/bin/Release/net8.0/fileapi <command>
 ```
 

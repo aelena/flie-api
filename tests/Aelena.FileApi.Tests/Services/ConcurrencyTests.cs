@@ -2,7 +2,7 @@ using System.Text;
 using Aelena.FileApi.Core.Services.Common;
 using Aelena.FileApi.Core.Services.Image;
 using Aelena.FileApi.Core.Services.Pdf;
-using FluentAssertions;
+using AwesomeAssertions;
 using iText.Kernel.Pdf;
 using iText.Layout;
 using iText.Layout.Element;

@@ -1,4 +1,3 @@
-using System.Text;
 using Aelena.FileApi.Core.Errors;
 using Aelena.FileApi.Core.Models;
 using MimeKit;

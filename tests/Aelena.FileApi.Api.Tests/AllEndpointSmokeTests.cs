@@ -6,10 +6,8 @@ using System.Text.Json;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using FluentAssertions;
+using AwesomeAssertions;
 using iText.Kernel.Pdf;
-using iText.Layout;
-using iText.Layout.Element;
 using Microsoft.AspNetCore.Mvc.Testing;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
@@ -248,9 +246,11 @@ public class AllEndpointSmokeTests(WebApplicationFactory<Program> factory) : Fil
     [Fact]
     public async Task Compare_And_Poll_ReturnsProcessing()
     {
-        var form = new MultipartFormDataContent();
-        form.Add(new ByteArrayContent("doc A"u8.ToArray()), "file_a", "a.txt");
-        form.Add(new ByteArrayContent("doc B"u8.ToArray()), "file_b", "b.txt");
+        var form = new MultipartFormDataContent
+        {
+            { new ByteArrayContent("doc A"u8.ToArray()), "file_a", "a.txt" },
+            { new ByteArrayContent("doc B"u8.ToArray()), "file_b", "b.txt" }
+        };
 
         var r = await Client.PostAsync("/compare", form);
         r.StatusCode.Should().Be(HttpStatusCode.Accepted);

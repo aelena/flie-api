@@ -29,8 +29,8 @@ public static class BatchEndpoints
 
         group.MapGet("/{batchId}", (string batchId, InMemoryJobStore<BatchJobResponse> store) =>
         {
-            var batch = store.Get(batchId);
-            if (batch is null) throw new FileApiException(404, $"Batch {batchId} not found.");
+            var batch = store.Get(batchId)
+                ?? throw new FileApiException(404, $"Batch {batchId} not found.");
             return batch.Status == "processing" ? Results.Accepted(value: batch) : Results.Ok(batch);
         }).WithName("GetBatchResult");
 

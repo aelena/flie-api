@@ -9,10 +9,10 @@ public static class TxtCommand
 {
     public static Command Create()
     {
-        var cmd = new Command("txt", "Plain text operations — metrics and search");
-        cmd.Add(Metrics());
-        cmd.Add(Search());
-        return cmd;
+        return new Command("txt", "Plain text operations — metrics and search")
+        {
+            Metrics(), Search()
+        };
     }
 
     private static Command Metrics()

@@ -1,5 +1,5 @@
 using Aelena.FileApi.Core.Services.Persistence;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace Aelena.FileApi.Tests.Services;

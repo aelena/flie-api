@@ -89,7 +89,7 @@ public static class DocxService
         using var stream = new MemoryStream(data);
         using var doc = WordprocessingDocument.Open(stream, false);
         var body = doc.MainDocumentPart?.Document?.Body;
-        if (body is null) throw new FileApiException(400, "Cannot read DOCX.");
+        _ = body ?? throw new FileApiException(400, "Cannot read DOCX.");
         var paragraphs = body.Descendants<Paragraph>().Select(p => p.InnerText).ToList();
 
         var total = paragraphs.Count;

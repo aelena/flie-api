@@ -1,7 +1,7 @@
 using System.Text;
 using Aelena.FileApi.Core.Errors;
 using Aelena.FileApi.Core.Services.Pdf;
-using FluentAssertions;
+using AwesomeAssertions;
 using iText.Kernel.Pdf;
 using iText.Layout;
 using iText.Layout.Element;
@@ -263,11 +263,12 @@ public class PdfServiceTests
     public void CompressPdf_ReturnsValidOutput()
     {
         var data = CreateSimplePdf(1);
-        var (name, bytes, origSize, compSize) = PdfService.CompressPdf(data, "test.pdf", 80, 150);
+        var (name, bytes, origSize, compressedSize) = PdfService.CompressPdf(data, "test.pdf", 80, 150);
 
         name.Should().Contain("compressed");
         bytes.Length.Should().BeGreaterThan(0);
         origSize.Should().Be(data.Length);
+        compressedSize.Should().Be(bytes.Length);
     }
 
     // ── Form Fields ──────────────────────────────────────────────────────

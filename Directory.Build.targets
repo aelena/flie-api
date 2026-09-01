@@ -21,4 +21,15 @@
     <NoWarn>$(NoWarn);CA1707;CA1861;CA1711</NoWarn>
   </PropertyGroup>
 
+  <!--
+    IDE0005 (unnecessary using) is enforced on the LTS target only. The set of
+    implicit usings differs between target frameworks — System.Net.Http.Json is
+    implicit on net11.0 but not net10.0 — so a using that is required by one
+    target is redundant in the other, and no single source file can satisfy both.
+    Enforcing it on net10.0 still catches genuinely dead usings.
+  -->
+  <PropertyGroup Condition="'$(TargetFramework)' != 'net10.0'">
+    <NoWarn>$(NoWarn);IDE0005</NoWarn>
+  </PropertyGroup>
+
 </Project>
