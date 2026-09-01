@@ -39,11 +39,13 @@ jobs:
       # A tag must never publish something that does not pass its own tests.
       - name: Test
         run: |
+          set -euo pipefail
           dotnet test Aelena.FileApi.sln -c Release
           dotnet test grpc/Aelena.FileApi.Grpc.sln -c Release
 
       - name: Pack
         run: |
+          set -euo pipefail
           dotnet pack src/Aelena.FileApi.Core/Aelena.FileApi.Core.csproj -c Release -o ./artifacts
           dotnet pack src/Aelena.FileApi.Core.Pdf/Aelena.FileApi.Core.Pdf.csproj -c Release -o ./artifacts
           dotnet pack src/Aelena.FileApi.Cli/Aelena.FileApi.Cli.csproj -c Release -o ./artifacts
